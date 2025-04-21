@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ interface SignUpModalProps {
 const passwordRules = /^(?=.*[0-9])(?=.*[!@#$%^&*()_\-+={[}\]|:;"'<>,.?/~`]).{8,}$/;
 
 export default function SignUpModal({ open, onClose }: SignUpModalProps) {
+  const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [profileImg, setProfileImg] = useState<File | null>(null);
   const [profilePreview, setProfilePreview] = useState<string | undefined>();
@@ -47,8 +47,8 @@ export default function SignUpModal({ open, onClose }: SignUpModalProps) {
 
   function validate(): string[] {
     const errs: string[] = [];
+    if (fullName.trim().length < 2) errs.push("Full name is required");
     if (username.length < 3) errs.push("Username must be at least 3 characters");
-    // Simulated check for already-taken username. (Replace with async check with backend)
     if (username.trim().toLowerCase() === "taken") errs.push("Username already taken");
     if (!password.match(passwordRules))
       errs.push("Password must be 8+ chars, include a number and a symbol");
@@ -66,7 +66,6 @@ export default function SignUpModal({ open, onClose }: SignUpModalProps) {
     }
     setErrors([]);
     setLoading(true);
-    // Simulate signup
     setTimeout(() => {
       setLoading(false);
       onClose();
@@ -113,6 +112,20 @@ export default function SignUpModal({ open, onClose }: SignUpModalProps) {
             </div>
           </div>
 
+          {/* Full Name */}
+          <div>
+            <label className="block text-left font-semibold mb-1" htmlFor="signup-fullname">Full Name</label>
+            <Input
+              id="signup-fullname"
+              value={fullName}
+              onChange={e => setFullName(e.target.value)}
+              required
+              minLength={2}
+              autoComplete="name"
+              placeholder="Enter your full name"
+            />
+          </div>
+
           {/* Username */}
           <div>
             <label className="block text-left font-semibold mb-1" htmlFor="signup-username">Username</label>
@@ -126,6 +139,7 @@ export default function SignUpModal({ open, onClose }: SignUpModalProps) {
               placeholder="Choose a unique username"
             />
           </div>
+
           {/* Password */}
           <div>
             <label className="block text-left font-semibold mb-1" htmlFor="signup-pw">Password</label>
@@ -151,6 +165,7 @@ export default function SignUpModal({ open, onClose }: SignUpModalProps) {
               </button>
             </div>
           </div>
+
           {/* Confirm Password */}
           <div>
             <label className="block text-left font-semibold mb-1" htmlFor="signup-pw2">Confirm Password</label>
@@ -176,6 +191,7 @@ export default function SignUpModal({ open, onClose }: SignUpModalProps) {
               </button>
             </div>
           </div>
+
           {/* Errors */}
           {errors.length > 0 && (
             <div className="space-y-1 bg-red-50 rounded p-2 text-sm text-red-600">
@@ -184,6 +200,7 @@ export default function SignUpModal({ open, onClose }: SignUpModalProps) {
               ))}
             </div>
           )}
+
           <DialogFooter>
             <Button
               className="w-full bg-[#7E69AB] hover:bg-[#9b87f5] transition-all"

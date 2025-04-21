@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
@@ -23,16 +22,15 @@ export default function AuthPage() {
   const [submitting, setSubmitting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
+  const [fullName, setFullName] = useState("");
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Handle verification parameters in URL
   useEffect(() => {
     const handleEmailConfirmation = async () => {
-      // Check for token_hash in URL or search params
-      const urlParams = new URLSearchParams(location.hash.substring(1)); // For # fragment
+      const urlParams = new URLSearchParams(location.hash.substring(1));
       const token_hash = searchParams.get('token_hash') || urlParams.get('token_hash');
       const type = searchParams.get('type') || urlParams.get('type');
       
@@ -41,11 +39,9 @@ export default function AuthPage() {
         setError(undefined);
         
         try {
-          // Use 'signup' as the OTP type for email confirmation
-          // This fixes the TypeScript error by using a proper type from supabase
           const { error } = await supabase.auth.verifyOtp({
             token_hash,
-            type: 'signup' // Must be 'signup', 'recovery', 'invite', 'email_change', or 'phone_change'
+            type: 'signup'
           });
           
           if (error) {
@@ -58,7 +54,6 @@ export default function AuthPage() {
               description: "Your email has been successfully verified.",
             });
             
-            // Redirect after a short delay to allow the toast to be seen
             setTimeout(() => {
               navigate('/');
             }, 2000);
@@ -77,11 +72,10 @@ export default function AuthPage() {
 
   React.useEffect(() => {
     if (user && session) {
-      navigate("/"); // Redirect when signed in.
+      navigate("/");
     }
   }, [user, session, navigate]);
 
-  // Handle avatar file input with preview and file size/type limit
   function handleAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -99,7 +93,6 @@ export default function AuthPage() {
     reader.readAsDataURL(file);
   }
 
-  // Upload avatar to Supabase storage bucket "avatars"
   async function uploadAvatar(file: File) {
     const BUCKET = "avatars";
     const fileName = `${Date.now()}-${file.name}`;
@@ -123,7 +116,10 @@ export default function AuthPage() {
     e.preventDefault();
     setError(undefined);
 
-    // Username is required and min 3 chars
+    if (fullName.trim().length < 2) {
+      setError("Full name is required");
+      return;
+    }
     if (username.length < 3) {
       setError("Username must be at least 3 characters");
       return;
@@ -149,10 +145,9 @@ export default function AuthPage() {
 
     let avatar_url: string | undefined = undefined;
     try {
-      // Upload avatar first - with new approach we don't need a user ID
       avatar_url = await uploadAvatar(avatarFile);
 
-      const { error: signUpError } = await signUp({ email, password, username, avatar_url });
+      const { error: signUpError } = await signUp({ email, password, username, avatar_url, name: fullName });
       if (signUpError) {
         setError(signUpError.message?.includes("duplicate") ? "Username or email already taken" : signUpError.message);
         setSubmitting(false);
@@ -191,7 +186,6 @@ export default function AuthPage() {
     setSubmitting(false);
   }
 
-  // If we're verifying an email, show a loading or success state
   if (verifying) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43]">
@@ -234,7 +228,6 @@ export default function AuthPage() {
         </div>
         {form === "signup" ? (
           <form className="space-y-4" onSubmit={handleSignUp}>
-            {/* Avatar upload */}
             <div className="flex flex-col items-center">
               <div className="relative w-20 h-20 mb-3 rounded-full bg-[#F1F0FB] dark:bg-[#333] flex items-center justify-center overflow-hidden border">
                 {avatarPreview ? (
@@ -245,6 +238,14 @@ export default function AuthPage() {
                 <input type="file" accept="image/*" onChange={handleAvatar} className="absolute inset-0 opacity-0 cursor-pointer" aria-label="Choose profile image"/>
               </div>
             </div>
+            <Input
+              placeholder="Full Name"
+              value={fullName}
+              onChange={e => setFullName(e.target.value)}
+              autoComplete="name"
+              minLength={2}
+              required
+            />
             <Input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" required />
             <Input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} autoComplete="username" minLength={3} required />
             <Input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={8} required autoComplete="new-password" />

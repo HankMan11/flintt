@@ -17,7 +17,7 @@ export function useSupabaseAuth() {
       setLoading(false);
     });
     // Then check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -25,18 +25,19 @@ export function useSupabaseAuth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Sign up with username, email, password, avatar_url (optional)
+  // Sign up with username, email, password, avatar_url, name (optional)
   const signUp = useCallback(async ({
     email,
     password,
     username,
     avatar_url,
-  }: { email: string; password: string; username: string; avatar_url?: string }) => {
+    name,
+  }: { email: string; password: string; username: string; avatar_url?: string; name?: string }) => {
     return await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { username, avatar_url },
+        data: { username, avatar_url, name },
       },
     });
   }, []);
@@ -52,3 +53,4 @@ export function useSupabaseAuth() {
 
   return { session, user, loading, signUp, signIn, signOut };
 }
+

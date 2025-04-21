@@ -23,7 +23,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <Link to="/" className="flex items-center gap-2">
             <h1 className="text-2xl font-bold text-primary">
-              {activeGroup ? activeGroup.name : "Group Glow"}
+              {activeGroup ? activeGroup.name : "Flintt"}
             </h1>
           </Link>
         </div>
@@ -120,3 +120,4 @@ export function Header() {
     </header>
   );
 }
+

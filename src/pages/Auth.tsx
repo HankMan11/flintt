@@ -38,9 +38,10 @@ export default function AuthPage() {
         setError(undefined);
         
         try {
+          // Fixed: Use 'signup' as the OTP type instead of 'email_confirmation'
           const { error } = await supabase.auth.verifyOtp({
             token_hash,
-            type: 'email_confirmation'
+            type: 'signup'
           });
           
           if (error) {

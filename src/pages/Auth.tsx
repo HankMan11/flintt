@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
@@ -22,23 +22,26 @@ export default function AuthPage() {
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [verificationSuccess, setVerificationSuccess] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
-
+  const location = useLocation();
   const navigate = useNavigate();
 
-  // Handle verification parameters
+  // Handle verification parameters in URL
   useEffect(() => {
     const handleEmailConfirmation = async () => {
-      const token_hash = searchParams.get('token_hash');
-      const type = searchParams.get('type');
+      // Check for token_hash in URL or search params
+      const urlParams = new URLSearchParams(location.hash.substring(1)); // For # fragment
+      const token_hash = searchParams.get('token_hash') || urlParams.get('token_hash');
+      const type = searchParams.get('type') || urlParams.get('type');
       
-      if (token_hash && type === 'email_confirmation') {
+      if (token_hash && (type === 'email_confirmation' || type === 'signup')) {
         setVerifying(true);
         setError(undefined);
         
         try {
-          // Fixed: Use 'signup' as the OTP type instead of 'email_confirmation'
+          // Use 'signup' as the OTP type for email confirmation
           const { error } = await supabase.auth.verifyOtp({
             token_hash,
             type: 'signup'
@@ -48,11 +51,16 @@ export default function AuthPage() {
             setError("Email verification failed: " + error.message);
             console.error("Email verification error:", error);
           } else {
+            setVerificationSuccess(true);
             toast({
               title: "Email verified!",
               description: "Your email has been successfully verified.",
             });
-            navigate('/');
+            
+            // Redirect after a short delay to allow the toast to be seen
+            setTimeout(() => {
+              navigate('/');
+            }, 2000);
           }
         } catch (err: any) {
           setError("Verification error: " + (err?.message || "Unknown error"));
@@ -64,7 +72,7 @@ export default function AuthPage() {
     };
 
     handleEmailConfirmation();
-  }, [searchParams, navigate, toast]);
+  }, [searchParams, location.hash, navigate, toast]);
 
   React.useEffect(() => {
     if (user && session) {
@@ -182,7 +190,7 @@ export default function AuthPage() {
     setSubmitting(false);
   }
 
-  // If we're verifying an email, show a loading state
+  // If we're verifying an email, show a loading or success state
   if (verifying) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43]">
@@ -192,6 +200,24 @@ export default function AuthPage() {
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9b87f5]"></div>
           </div>
           {error && <div className="text-red-500 text-sm">{error}</div>}
+        </div>
+      </div>
+    );
+  }
+
+  if (verificationSuccess) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43]">
+        <div className="rounded-2xl shadow-xl p-8 max-w-sm w-full bg-white/90 dark:bg-[#222]/90 flex flex-col text-center gap-4 border">
+          <h1 className="text-2xl font-bold text-[#9b87f5]">Email Verified!</h1>
+          <p>Your email has been successfully verified.</p>
+          <p>Redirecting you to the home page...</p>
+          <Button 
+            onClick={() => navigate('/')}
+            className="w-full bg-[#9b87f5] hover:bg-[#6E59A5]"
+          >
+            Go to Home Page
+          </Button>
         </div>
       </div>
     );

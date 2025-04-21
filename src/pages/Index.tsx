@@ -1,13 +1,37 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { ThemeProvider } from "@/components/theme-provider";
+import { AppProvider } from "@/contexts/AppContext";
+import { Header } from "@/components/layout/header";
+import { GroupSidebar } from "@/components/layout/group-sidebar";
+import { Feed } from "@/components/posts/feed";
+import { StatsPage } from "@/components/stats/stats-page";
+import { SettingsPage } from "@/components/settings/settings-page";
+import { GroupsPage } from "@/components/groups/groups-page";
+import { Routes, Route } from "react-router-dom";
+import { MobileNav } from "@/components/layout/mobile-nav";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <ThemeProvider defaultTheme="light" storageKey="group-glow-theme">
+      <AppProvider>
+        <div className="flex min-h-screen flex-col">
+          <Header />
+          <div className="flex flex-1">
+            <GroupSidebar />
+            <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+              <Routes>
+                <Route path="/" element={<Feed />} />
+                <Route path="/stats" element={<StatsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/groups" element={<GroupsPage />} />
+                <Route path="*" element={<Feed />} />
+              </Routes>
+            </main>
+          </div>
+          <MobileNav />
+        </div>
+      </AppProvider>
+    </ThemeProvider>
   );
 };
 

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppProvider } from "@/contexts/AppContext";
@@ -12,6 +13,7 @@ import { MobileNav } from "@/components/layout/mobile-nav";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate } from "react-router-dom";
 import { GroupSettingsPage } from "@/components/groups/group-settings-page";
+import { Toaster } from "@/components/ui/toaster";
 
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
@@ -59,6 +61,7 @@ const Index = () => {
             </main>
           </div>
           <MobileNav />
+          <Toaster />
         </div>
       </AppProvider>
     </ThemeProvider>

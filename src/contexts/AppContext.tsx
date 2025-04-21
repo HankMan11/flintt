@@ -3,6 +3,7 @@ import React from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { GroupsProvider, useGroups } from "./GroupsContext";
 import { PostsProvider, usePosts } from "./PostsContext";
+import { supabase } from "@/integrations/supabase/client";
 
 // This is the combined hook that provides access to all context values
 export const useApp = () => {
@@ -24,6 +25,7 @@ export const useApp = () => {
     setActiveGroup: groups.setActiveGroup,
     loadingGroups: groups.loadingGroups,
     setLoadingGroups: groups.setLoadingGroups,
+    fetchGroups: groups.fetchGroups,
 
     // Posts context values and methods
     posts: posts.posts,
@@ -182,15 +184,114 @@ export const useApp = () => {
     
     // Add any other methods that combine functionality from multiple contexts here
     createGroup: async (name: string, icon: string, description: string = "") => {
-      // Implementation would combine functionality from groups context
-      // Placeholder for now
-      return null;
+      if (!auth.currentUser) return null;
+      
+      try {
+        // Generate a random invite code
+        const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        
+        // Create the group in the database
+        const { data: groupData, error: groupError } = await supabase
+          .from('groups')
+          .insert({
+            name,
+            icon,
+            description,
+            invite_code: inviteCode
+          })
+          .select()
+          .single();
+        
+        if (groupError) {
+          console.error("Error creating group:", groupError);
+          return null;
+        }
+        
+        // Add the current user as a member of the group
+        const { error: memberError } = await supabase
+          .from('group_members')
+          .insert({
+            group_id: groupData.id,
+            user_id: auth.currentUser.id
+          });
+        
+        if (memberError) {
+          console.error("Error adding user to group:", memberError);
+          return null;
+        }
+        
+        // Refresh the groups list
+        await groups.fetchGroups();
+        
+        // Return the newly created group
+        return {
+          id: groupData.id,
+          name: groupData.name,
+          description: groupData.description,
+          icon: groupData.icon,
+          inviteCode: groupData.invite_code,
+          members: [auth.currentUser]
+        };
+      } catch (error) {
+        console.error("Error creating group:", error);
+        return null;
+      }
     },
     
     joinGroup: async (inviteCode: string) => {
-      // Implementation would combine functionality from groups context
-      // Placeholder for now
-      return false;
+      if (!auth.currentUser) return false;
+      
+      try {
+        // Find the group with the provided invite code
+        const { data: groupData, error: groupError } = await supabase
+          .from('groups')
+          .select('*')
+          .eq('invite_code', inviteCode)
+          .single();
+        
+        if (groupError || !groupData) {
+          console.error("Error finding group:", groupError);
+          return false;
+        }
+        
+        // Check if the user is already a member of the group
+        const { data: memberData, error: memberCheckError } = await supabase
+          .from('group_members')
+          .select('*')
+          .eq('group_id', groupData.id)
+          .eq('user_id', auth.currentUser.id);
+        
+        if (memberCheckError) {
+          console.error("Error checking membership:", memberCheckError);
+          return false;
+        }
+        
+        if (memberData && memberData.length > 0) {
+          // User is already a member
+          return true;
+        }
+        
+        // Add the user to the group
+        const { error: joinError } = await supabase
+          .from('group_members')
+          .insert({
+            group_id: groupData.id,
+            user_id: auth.currentUser.id
+          });
+        
+        if (joinError) {
+          console.error("Error joining group:", joinError);
+          return false;
+        }
+        
+        // Refresh the groups list
+        await groups.fetchGroups();
+        
+        return true;
+      } catch (error) {
+        console.error("Error joining group:", error);
+        return false;
+      }
     }
   };
 };

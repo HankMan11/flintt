@@ -6,16 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, UserPlus, Loader2 } from "lucide-react";
+import { Plus, Search, UserPlus, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
-// Add automatic groups refresh after create/join and on mount:
 export function GroupsPage() {
-  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, setLoadingGroups, setGroups } = useApp();
+  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, fetchGroups } = useApp();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
   
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupIcon, setNewGroupIcon] = useState("");
@@ -28,14 +28,32 @@ export function GroupsPage() {
 
   const navigate = useNavigate();
 
-  // This effect attempts to reload groups on mount in case of stuck UI.
+  // Load groups on component mount
   useEffect(() => {
-    if (loadingGroups && setLoadingGroups && setGroups) {
-      // Here you would add actual group-fetching logic if necessary.
-      // setGroups(mockFetchGroups());
-      // setLoadingGroups(false);
+    if (!loadingGroups) {
+      fetchGroups();
     }
-  }, [loadingGroups, setLoadingGroups, setGroups]);
+  }, []);
+
+  const handleRefreshGroups = async () => {
+    setRefreshing(true);
+    try {
+      await fetchGroups();
+      toast({
+        title: "Groups Refreshed",
+        description: "Your groups list has been updated",
+      });
+    } catch (error) {
+      console.error("Error refreshing groups:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh groups",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleCreateGroup = async () => {
     if (newGroupName.trim() === "") return;
@@ -58,10 +76,6 @@ export function GroupsPage() {
         setNewGroupIcon("");
         setNewGroupDescription("");
         setIsCreateOpen(false);
-
-        // After creating a group, reload/refresh groups if possible
-        // setGroups(await fetchGroups());
-        // setLoadingGroups(false);
       } else {
         toast({
           title: "Error",
@@ -98,10 +112,6 @@ export function GroupsPage() {
         
         setInviteCode("");
         setIsJoinOpen(false);
-
-        // After joining, reload/refresh groups if possible
-        // setGroups(await fetchGroups());
-        // setLoadingGroups(false);
       } else {
         setJoinError("Invalid invite code. Please try again.");
         toast({
@@ -136,6 +146,15 @@ export function GroupsPage() {
           <p className="text-muted-foreground">View and manage your groups</p>
         </div>
         <div className="flex gap-2">
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={handleRefreshGroups} 
+            disabled={refreshing || loadingGroups}
+          >
+            <RefreshCw className={`mr-2 h-4 w-4 ${refreshing || loadingGroups ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
               <Button size="sm">

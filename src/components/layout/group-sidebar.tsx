@@ -3,15 +3,15 @@ import { useApp } from "@/contexts/AppContext";
 import { Group } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, Loader2, RefreshCw } from "lucide-react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 
 export function GroupSidebar() {
-  const { groups, activeGroup, setActiveGroup, createGroup, joinGroup, loadingGroups } = useApp();
+  const { groups, activeGroup, setActiveGroup, createGroup, joinGroup, loadingGroups, fetchGroups } = useApp();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -21,7 +21,35 @@ export function GroupSidebar() {
   const [joinError, setJoinError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
+
+  // Load groups on component mount if not already loading
+  useEffect(() => {
+    if (!loadingGroups) {
+      fetchGroups();
+    }
+  }, []);
+
+  const handleRefreshGroups = async () => {
+    setRefreshing(true);
+    try {
+      await fetchGroups();
+      toast({
+        title: "Groups Refreshed",
+        description: "Your groups list has been updated",
+      });
+    } catch (error) {
+      console.error("Error refreshing groups:", error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh groups",
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const handleCreateGroup = async () => {
     if (newGroupName.trim() === "") return;
@@ -103,8 +131,17 @@ export function GroupSidebar() {
 
   return (
     <div className="hidden w-72 flex-col border-r bg-background md:flex">
-      <div className="flex h-14 items-center border-b px-4">
+      <div className="flex h-14 items-center justify-between border-b px-4">
         <h2 className="text-lg font-semibold">Your Groups</h2>
+        <Button 
+          size="sm" 
+          variant="ghost"
+          onClick={handleRefreshGroups}
+          disabled={refreshing || loadingGroups}
+        >
+          <RefreshCw className={`h-4 w-4 ${refreshing || loadingGroups ? 'animate-spin' : ''}`} />
+          <span className="sr-only">Refresh</span>
+        </Button>
       </div>
       <ScrollArea className="flex-1">
         <div className="p-4">
@@ -117,6 +154,15 @@ export function GroupSidebar() {
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <p className="text-muted-foreground">No groups yet</p>
               <p className="text-sm text-muted-foreground">Create or join a group to get started</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4"
+                onClick={handleRefreshGroups}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Refresh
+              </Button>
             </div>
           ) : (
             groups.map((group) => (

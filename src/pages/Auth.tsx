@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
@@ -7,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import FlinttLogoAnimation from "@/components/auth/FlinttLogoAnimation";
 
 const passwordRules = /^(?=.*[0-9])(?=.*[!@#$%^&*()_\-+={[}\]|:;"'<>,.?/~`]).{8,}$/;
 
@@ -24,6 +24,7 @@ export default function AuthPage() {
   const [verifying, setVerifying] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [logoAnimationDone, setLogoAnimationDone] = useState(false);
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -187,6 +188,12 @@ export default function AuthPage() {
     setSubmitting(false);
   }
 
+  if (!logoAnimationDone) {
+    return (
+      <FlinttLogoAnimation onFinish={() => setLogoAnimationDone(true)} />
+    );
+  }
+
   if (verifying) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43]">
@@ -270,4 +277,3 @@ export default function AuthPage() {
     </div>
   );
 }
-

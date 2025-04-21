@@ -1,6 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, Group, Post, Comment } from "../types";
+import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 // Mock data
 import { mockUsers, mockGroups, mockPosts } from "../data/mockData";
@@ -31,29 +32,46 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user: authUser } = useSupabaseAuth();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [groups, setGroups] = useState<Group[]>(mockGroups);
   const [posts, setPosts] = useState<Post[]>(mockPosts);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
 
-  // Initialize with mock data on component mount
   useEffect(() => {
-    // Auto-login with first user for demo
-    setCurrentUser(mockUsers[0]);
-  }, []);
+    if (authUser) {
+      const username = authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'User';
+      const avatar_url = authUser.user_metadata?.avatar_url || 'https://source.unsplash.com/random/100x100/?avatar';
+      
+      const appUser: User = {
+        id: authUser.id,
+        name: username,
+        username: username,
+        email: authUser.email || '',
+        avatar: avatar_url,
+      };
+      
+      setCurrentUser(appUser);
+      
+      const userExistsInGroups = groups.some(group => 
+        group.members.some(member => member.id === appUser.id)
+      );
+      
+      if (!userExistsInGroups && groups.length > 0) {
+        const updatedGroups = [...groups];
+        updatedGroups[0].members.push(appUser);
+        setGroups(updatedGroups);
+      }
+    } else {
+      setCurrentUser(null);
+    }
+  }, [authUser, groups]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
-    // Mock login - in a real app, this would validate against a backend
-    const user = mockUsers.find(u => u.username === username);
-    if (user) {
-      setCurrentUser(user);
-      return true;
-    }
-    return false;
+    return true;
   };
 
   const logout = () => {
-    setCurrentUser(null);
     setActiveGroup(null);
   };
 
@@ -79,7 +97,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const groupIndex = groups.findIndex(g => g.inviteCode === inviteCode);
     if (groupIndex === -1) return false;
 
-    // Check if user is already a member
     if (groups[groupIndex].members.some(m => m.id === currentUser.id)) {
       return true;
     }
@@ -101,7 +118,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       m => m.id !== currentUser.id
     );
 
-    // If no members left, remove the group
     if (updatedGroups[groupIndex].members.length === 0) {
       updatedGroups.splice(groupIndex, 1);
     }
@@ -141,7 +157,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const postIndex = posts.findIndex(p => p.id === postId);
     if (postIndex === -1) return;
 
-    // Only allow post owner to delete
     if (posts[postIndex].user.id !== currentUser.id) return;
 
     const updatedPosts = [...posts];
@@ -158,12 +173,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedPosts = [...posts];
     const post = updatedPosts[postIndex];
 
-    // Toggle like
     if (post.likes.includes(currentUser.id)) {
       post.likes = post.likes.filter(id => id !== currentUser.id);
     } else {
       post.likes.push(currentUser.id);
-      // Remove from dislikes if present
       post.dislikes = post.dislikes.filter(id => id !== currentUser.id);
     }
 
@@ -179,12 +192,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedPosts = [...posts];
     const post = updatedPosts[postIndex];
 
-    // Toggle dislike
     if (post.dislikes.includes(currentUser.id)) {
       post.dislikes = post.dislikes.filter(id => id !== currentUser.id);
     } else {
       post.dislikes.push(currentUser.id);
-      // Remove from likes if present
       post.likes = post.likes.filter(id => id !== currentUser.id);
     }
 
@@ -200,7 +211,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const updatedPosts = [...posts];
     const post = updatedPosts[postIndex];
 
-    // Toggle heart (save)
     if (post.hearts.includes(currentUser.id)) {
       post.hearts = post.hearts.filter(id => id !== currentUser.id);
     } else {
@@ -227,7 +237,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     if (parentCommentId) {
-      // Add as a reply to an existing comment
       const findAndAddReply = (comments: Comment[]): boolean => {
         for (let i = 0; i < comments.length; i++) {
           if (comments[i].id === parentCommentId) {
@@ -246,7 +255,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       findAndAddReply(post.comments);
     } else {
-      // Add as a top-level comment
       post.comments.push(newComment);
     }
 
@@ -275,10 +283,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       hearts: filteredPosts.reduce((count, post) => 
         post.hearts.includes(userId) ? count + 1 : count, 0),
       commentCount: filteredPosts.reduce((count, post) => {
-        // Count top-level comments
         const userComments = post.comments.filter(c => c.user.id === userId).length;
         
-        // Count replies
         const userReplies = post.comments.reduce((replyCount, comment) => {
           if (!comment.replies) return replyCount;
           return replyCount + comment.replies.filter(r => r.user.id === userId).length;
@@ -299,10 +305,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const group = groups.find(g => g.id === groupId);
     if (!group) return null;
 
-    // Get all members in the group
     const members = group.members;
 
-    // Calculate stats per member
     const memberStats = members.map(member => {
       const stats = getUserStats(member.id, groupId);
       return {
@@ -311,7 +315,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
     });
 
-    // Sort for different categories
     const mostUploads = [...memberStats]
       .sort((a, b) => b.stats.uploads - a.stats.uploads)
       .slice(0, 5)
@@ -337,7 +340,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .slice(0, 5)
       .map(m => ({ user: m.user, count: m.stats.commentCount }));
 
-    // Most saved posts
     const sortedPosts = [...groupPosts]
       .sort((a, b) => b.hearts.length - a.hearts.length)
       .slice(0, 5)

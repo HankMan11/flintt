@@ -14,10 +14,6 @@ export default function FlinttLogoAnimation({
   const [animate, setAnimate] = useState(false);
   const [hide, setHide] = useState(false);
 
-  // Final position for logo (matches Auth page logo)
-  // We'll use translateY to move the logo upward to about where
-  // the card's logo sits, and scale down to the same size as the static logo.
-
   useEffect(() => {
     // Delay for some dramatic effect before animating
     const timer1 = setTimeout(() => setAnimate(true), 350);
@@ -34,11 +30,10 @@ export default function FlinttLogoAnimation({
     // eslint-disable-next-line
   }, []);
 
-  // Define the final logo size/same as on Auth page above the card (e.g. 3rem)
-  const FINAL_FONT_SIZE = "3rem";
-  const INITIAL_FONT_SIZE = "7.5rem";
+  // Define the consistent font size for the logo
+  const FONT_SIZE = "5rem";
 
-  // Logo animates from center, then moves up and scales down to FINAL_FONT_SIZE
+  // Logo animates from center to top without scaling down
   return (
     <div
       className={[
@@ -54,19 +49,19 @@ export default function FlinttLogoAnimation({
           "select-none user-select-none",
           "origin-top transition-all duration-1000 ease-in-out",
           animate
-            // Move up so it exactly overlays the Auth page card logo, and scale to that size
-            ? "scale-[0.4] translate-y-[-170px] md:translate-y-[-200px]"
-            : "scale-100 translate-y-0",
+            // Move up without scaling down
+            ? "translate-y-[-170px] md:translate-y-[-200px]"
+            : "translate-y-0",
         ].join(" ")}
         style={{
-          fontSize: animate ? FINAL_FONT_SIZE : INITIAL_FONT_SIZE,
+          fontSize: FONT_SIZE,
           letterSpacing: "0.03em",
           lineHeight: 1,
           textShadow:
             !animate
               ? "0 8px 36px #7E69AB80, 0 2px 8px #fff8"
               : "0 2px 8px #7E69AB70",
-          transitionProperty: "transform, font-size, text-shadow",
+          transitionProperty: "transform, text-shadow",
         }}
       >
         flintt
@@ -74,4 +69,3 @@ export default function FlinttLogoAnimation({
     </div>
   );
 }
-

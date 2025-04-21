@@ -47,7 +47,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         id: authUser.id,
         name: username,
         username: username,
-        email: authUser.email || '',
         avatar: avatar_url,
       };
       

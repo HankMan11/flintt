@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate } from "react-router-dom";
@@ -48,13 +47,24 @@ export default function AuthPage() {
 
   // Upload avatar to Supabase storage bucket "avatars"
   async function uploadAvatar(uid: string, file: File) {
-    const { data, error } = await import("@/integrations/supabase/client").then(({ supabase }) =>
-      supabase.storage.from("avatars").upload(`${uid}/${file.name}`, file, { upsert: true })
-    );
-    if (error) throw error;
+    const BUCKET = "avatars";
+    let uploadResult;
+    try {
+      uploadResult = await import("@/integrations/supabase/client").then(({ supabase }) =>
+        supabase.storage.from(BUCKET).upload(`${uid}/${file.name}`, file, { upsert: true })
+      );
+    } catch (error) {
+      console.error("Exception while trying to upload avatar:", error);
+      throw new Error("Avatar upload failed (unexpected error)");
+    }
+    const { data, error } = uploadResult;
+    if (error) {
+      console.error("Supabase bucket upload error:", error);
+      throw new Error("Profile picture upload failed: " + (error.message || "Unknown error"));
+    }
     // Get public URL
     const { data: urlData } = await import("@/integrations/supabase/client").then(({ supabase }) =>
-      supabase.storage.from("avatars").getPublicUrl(`${uid}/${file.name}`)
+      supabase.storage.from(BUCKET).getPublicUrl(`${uid}/${file.name}`)
     );
     return urlData?.publicUrl ?? null;
   }

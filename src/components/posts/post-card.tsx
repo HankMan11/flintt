@@ -20,6 +20,10 @@ export function PostCard({ post }: PostCardProps) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
 
+  if (!post || !post.user) {
+    return null; // Safely handle invalid posts
+  }
+
   const handleLike = () => {
     likePost(post.id);
   };

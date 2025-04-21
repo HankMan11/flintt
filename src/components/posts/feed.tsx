@@ -43,9 +43,12 @@ export function Feed() {
   // Get all posts for the active group
   const allPosts = filterGroupPosts(activeGroup.id);
   
-  // Filter posts based on search and filters
+  // Filter posts based on search and filters - fixed the useMemo dependencies
   const filteredPosts = useMemo(() => {
     return allPosts.filter(post => {
+      // Skip filtering if post is undefined
+      if (!post) return false;
+      
       // Apply search query filter
       if (searchQuery) {
         const matchesCaption = post.caption?.toLowerCase().includes(searchQuery.toLowerCase());

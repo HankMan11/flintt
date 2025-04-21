@@ -1,6 +1,5 @@
 
-import React, { useEffect } from "react";
-import LandingPage from "@/components/auth/LandingPage";
+import React, { useEffect, useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppProvider } from "@/contexts/AppContext";
 import { Header } from "@/components/layout/header";
@@ -9,7 +8,7 @@ import { Feed } from "@/components/posts/feed";
 import { StatsPage } from "@/components/stats/stats-page";
 import { SettingsPage } from "@/components/settings/settings-page";
 import { GroupsPage } from "@/components/groups/groups-page";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate } from "react-router-dom";
@@ -17,14 +16,31 @@ import { useNavigate } from "react-router-dom";
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
   const navigate = useNavigate();
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
-      navigate("/auth");
+    // Only redirect when loading is complete
+    if (!loading) {
+      if (!user) {
+        navigate("/auth");
+      }
+      setCheckingAuth(false);
     }
   }, [loading, user, navigate]);
 
-  if (loading) return null;
+  // Show a simple loading state while checking auth
+  if (loading || checkingAuth) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <div className="rounded-lg bg-white p-8 shadow-md dark:bg-gray-800">
+          <div className="flex flex-col items-center">
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-300 border-t-blue-600"></div>
+            <p className="mt-4 text-gray-600 dark:text-gray-300">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ThemeProvider defaultTheme="light" storageKey="group-glow-theme">
@@ -39,7 +55,7 @@ const Index = () => {
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/groups" element={<GroupsPage />} />
-                <Route path="*" element={<Feed />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
           </div>

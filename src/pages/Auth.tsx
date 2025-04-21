@@ -262,6 +262,7 @@ export default function AuthPage() {
           </form>
         )}
       </div>
+      <div className="mt-4 text-sm text-[#8E9196] select-none user-select-none">Made by Harry Gaunt</div>
     </div>
   );
 }

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, Group, Post, Comment } from "../types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -34,14 +33,13 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user: authUser } = useSupabaseAuth();
+  const { user: authUser, signOut: supabaseSignOut } = useSupabaseAuth();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
   const [loadingGroups, setLoadingGroups] = useState(true);
 
-  // Set up current user when auth changes
   useEffect(() => {
     if (authUser) {
       const username = authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'User';
@@ -56,7 +54,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       setCurrentUser(appUser);
       
-      // Load user's groups when user changes
       loadUserGroups(authUser.id);
     } else {
       setCurrentUser(null);
@@ -65,13 +62,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [authUser]);
 
-  // Load user's groups from Supabase
   const loadUserGroups = async (userId: string) => {
     setLoadingGroups(true);
     try {
       console.log('Loading groups for user:', userId);
       
-      // Fetch groups the user is a member of
       const { data: memberships, error: membershipError } = await supabase
         .from('group_members')
         .select('group_id')
@@ -93,7 +88,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const groupIds = memberships.map(m => m.group_id);
       console.log('Found group IDs:', groupIds);
 
-      // Fetch the actual group details
       const { data: groupsData, error: groupsError } = await supabase
         .from('groups')
         .select('*')
@@ -107,7 +101,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       console.log('Loaded groups data:', groupsData);
 
-      // For each group, get all members
       const loadedGroups: Group[] = [];
       
       for (const groupData of groupsData || []) {
@@ -121,8 +114,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           continue;
         }
         
-        // For simplicity, we'll use mockUsers for member data
-        // In a real app, you'd fetch the actual profile data for each member
         const members = memberData.map(m => {
           const mockUser = mockUsers.find(u => u.id === m.user_id) || {
             id: m.user_id,
@@ -133,7 +124,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return mockUser;
         });
         
-        // Make sure the current user is included in members
         if (!members.some(m => m.id === userId)) {
           if (currentUser) {
             members.push(currentUser);
@@ -154,11 +144,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.log('Final loaded groups:', loadedGroups);
       setGroups(loadedGroups);
       
-      // Set active group to the first one if none is selected
       if (loadedGroups.length > 0 && !activeGroup) {
         setActiveGroup(loadedGroups[0]);
       } else if (activeGroup) {
-        // Update active group if it's in the loaded groups
         const updatedActiveGroup = loadedGroups.find(g => g.id === activeGroup.id);
         if (updatedActiveGroup) {
           setActiveGroup(updatedActiveGroup);
@@ -179,9 +167,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
-  const logout = () => {
-    setActiveGroup(null);
-    setGroups([]);
+  const logout = async () => {
+    try {
+      await supabaseSignOut();
+      
+      setActiveGroup(null);
+      setGroups([]);
+      setCurrentUser(null);
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const createGroup = async (name: string, icon: string, description?: string): Promise<Group | null> => {
@@ -193,10 +188,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       console.log('Creating group with:', { name, icon, description, currentUser });
       
-      // Generate a random invite code
       const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
-      // Insert the new group into Supabase
       const { data: groupData, error: groupError } = await supabase
         .from('groups')
         .insert({
@@ -215,7 +208,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       console.log('Group created successfully:', groupData);
       
-      // Add the creator as a member
       const { error: memberError } = await supabase
         .from('group_members')
         .insert({
@@ -225,12 +217,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       
       if (memberError) {
         console.error('Error adding creator as member:', memberError);
-        // Try to clean up the created group
         await supabase.from('groups').delete().eq('id', groupData.id);
         return null;
       }
       
-      // Create the group object
       const newGroup: Group = {
         id: groupData.id,
         name: groupData.name,
@@ -241,7 +231,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         inviteCode: groupData.invite_code
       };
       
-      // Update state
       setGroups([...groups, newGroup]);
       setActiveGroup(newGroup);
       
@@ -256,7 +245,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser) return false;
 
     try {
-      // Find the group with the given invite code
       const { data: groupData, error: groupError } = await supabase
         .from('groups')
         .select('*')
@@ -268,7 +256,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
       
-      // Check if the user is already a member
       const { data: existingMembership, error: membershipError } = await supabase
         .from('group_members')
         .select('*')
@@ -277,12 +264,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         .single();
       
       if (existingMembership) {
-        // User is already a member, just update the state
         await loadUserGroups(currentUser.id);
         return true;
       }
       
-      // Add the user to the group
       const { error: joinError } = await supabase
         .from('group_members')
         .insert({
@@ -295,7 +280,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
       
-      // Reload groups to get updated list
       await loadUserGroups(currentUser.id);
       return true;
     } catch (error) {
@@ -308,7 +292,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!currentUser) return false;
 
     try {
-      // Remove the user from the group
       const { error } = await supabase
         .from('group_members')
         .delete()
@@ -320,7 +303,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
       
-      // Update state
       const updatedGroups = groups.filter(g => g.id !== groupId);
       setGroups(updatedGroups);
       

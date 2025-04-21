@@ -41,14 +41,21 @@ export function useSupabaseAuth() {
       },
     });
   }, []);
+  
   // Log in
   const signIn = useCallback(async ({
     email, password
   }: { email: string; password: string }) => {
     return await supabase.auth.signInWithPassword({ email, password });
   }, []);
+  
+  // Log out
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error);
+      throw error;
+    }
   }, []);
 
   return { session, user, loading, signUp, signIn, signOut };

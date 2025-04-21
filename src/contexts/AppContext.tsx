@@ -2,8 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, Group, Post, Comment } from "../types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { supabase } from "@/integrations/supabase/client";
-
-// Mock data
 import { mockUsers } from "../data/mockData";
 
 interface AppContextType {
@@ -17,7 +15,7 @@ interface AppContextType {
   createGroup: (name: string, icon: string, description?: string) => Promise<Group | null>;
   joinGroup: (inviteCode: string) => Promise<boolean>;
   leaveGroup: (groupId: string) => Promise<boolean>;
-  addPost: (groupId: string, caption: string, mediaUrl: string, mediaType: 'image' | 'video') => void;
+  addPost: (groupId: string, caption: string, mediaUrl: string, mediaType: 'image' | 'video') => Promise<void>;
   deletePost: (postId: string) => void;
   likePost: (postId: string) => void;
   dislikePost: (postId: string) => void;
@@ -44,23 +42,60 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (authUser) {
       const username = authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'User';
       const avatar_url = authUser.user_metadata?.avatar_url || 'https://source.unsplash.com/random/100x100/?avatar';
-      
-      const appUser: User = {
-        id: authUser.id,
-        name: username,
-        username: username,
-        avatar: avatar_url,
-      };
-      
+      const appUser: User = { id: authUser.id, name: username, username: username, avatar: avatar_url };
       setCurrentUser(appUser);
-      
       loadUserGroups(authUser.id);
     } else {
       setCurrentUser(null);
       setGroups([]);
       setActiveGroup(null);
+      setPosts([]);
     }
   }, [authUser]);
+
+  useEffect(() => {
+    const fetchAndSetPosts = async () => {
+      if (!authUser || !activeGroup) {
+        setPosts([]);
+        return;
+      }
+      const { data: postsData, error } = await supabase
+        .from('posts')
+        .select("*")
+        .eq('group_id', activeGroup.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("Error loading posts:", error);
+        setPosts([]);
+        return;
+      }
+
+      const loadedPosts: Post[] = (postsData || []).map(row => ({
+        id: row.id,
+        user: {
+          ...(mockUsers.find(u => u.id === row.user_id) || currentUser || {
+            id: row.user_id,
+            name: "User",
+            username: "user",
+            avatar: "https://source.unsplash.com/random/100x100/?avatar"
+          }),
+        },
+        group: activeGroup,
+        caption: row.caption || undefined,
+        mediaUrl: row.media_url,
+        mediaType: row.media_type === "video" ? "video" : "image",
+        createdAt: row.created_at,
+        likes: Array.isArray(row.likes) ? row.likes : [],
+        dislikes: Array.isArray(row.dislikes) ? row.dislikes : [],
+        hearts: Array.isArray(row.hearts) ? row.hearts : [],
+        comments: [],
+      }));
+      setPosts(loadedPosts);
+    };
+
+    fetchAndSetPosts();
+  }, [authUser, activeGroup]);
 
   const loadUserGroups = async (userId: string) => {
     setLoadingGroups(true);
@@ -170,10 +205,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logout = async () => {
     try {
       await supabaseSignOut();
-      
       setActiveGroup(null);
       setGroups([]);
       setCurrentUser(null);
+      setPosts([]);
     } catch (error) {
       console.error('Error logging out:', error);
     }
@@ -317,27 +352,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addPost = (groupId: string, caption: string, mediaUrl: string, mediaType: 'image' | 'video') => {
+  const addPost = async (groupId: string, caption: string, mediaUrl: string, mediaType: 'image' | 'video') => {
     if (!currentUser) return;
+    if (!groupId || !mediaUrl) return;
 
-    const group = groups.find(g => g.id === groupId);
-    if (!group) return;
-
-    const newPost: Post = {
-      id: Date.now().toString(),
-      user: currentUser,
-      group,
+    const newPost = {
+      user_id: currentUser.id,
+      group_id: groupId,
       caption,
-      mediaUrl,
-      mediaType,
-      createdAt: new Date().toISOString(),
+      media_url: mediaUrl,
+      media_type: mediaType,
       likes: [],
       dislikes: [],
       hearts: [],
-      comments: []
     };
 
-    setPosts([...posts, newPost]);
+    const { data, error } = await supabase
+      .from('posts')
+      .insert(newPost)
+      .select()
+      .single();
+
+    if (error) {
+      console.error("Error saving post:", error);
+      return;
+    }
+
+    if (activeGroup) {
+      const postObj: Post = {
+        id: data.id,
+        user: currentUser,
+        group: activeGroup,
+        caption: data.caption || undefined,
+        mediaUrl: data.media_url,
+        mediaType: data.media_type === "video" ? "video" : "image",
+        createdAt: data.created_at,
+        likes: data.likes ?? [],
+        dislikes: data.dislikes ?? [],
+        hearts: data.hearts ?? [],
+        comments: [],
+      };
+      setPosts(p => [postObj, ...p]);
+    }
   };
 
   const deletePost = (postId: string) => {

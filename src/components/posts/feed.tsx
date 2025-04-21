@@ -20,30 +20,11 @@ export function Feed() {
     onlySaved: false
   });
 
-  if (!activeGroup) {
-    return (
-      <div className="px-4 py-6 md:px-6 lg:px-8">
-        <Card className="p-6 text-center">
-          <CardHeader>
-            <CardTitle>Select a Group</CardTitle>
-            <CardDescription>
-              Choose a group from the sidebar to view its feed
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              You can create or join a group using the options at the bottom of the sidebar.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Get all posts for the active group
-  const allPosts = filterGroupPosts(activeGroup.id);
+  // IMPORTANT: Always define useMemo hooks unconditionally, even if they might not be used
+  // This ensures React hook order is consistent between renders
+  const allPosts = activeGroup ? filterGroupPosts(activeGroup.id) : [];
   
-  // Filter posts based on search and filters - fixed the useMemo dependencies
+  // Filter posts based on search and filters
   const filteredPosts = useMemo(() => {
     return allPosts.filter(post => {
       // Skip filtering if post is undefined
@@ -71,6 +52,26 @@ export function Feed() {
       return true;
     });
   }, [allPosts, searchQuery, filters, currentUser]);
+
+  if (!activeGroup) {
+    return (
+      <div className="px-4 py-6 md:px-6 lg:px-8">
+        <Card className="p-6 text-center">
+          <CardHeader>
+            <CardTitle>Select a Group</CardTitle>
+            <CardDescription>
+              Choose a group from the sidebar to view its feed
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              You can create or join a group using the options at the bottom of the sidebar.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">

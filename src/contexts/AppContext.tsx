@@ -1,10 +1,11 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, Group, Post, Comment } from "../types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { supabase } from "@/integrations/supabase/client";
 
 // Mock data
-import { mockUsers, mockGroups, mockPosts } from "../data/mockData";
+import { mockUsers } from "../data/mockData";
 
 interface AppContextType {
   currentUser: User | null;
@@ -34,8 +35,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user: authUser } = useSupabaseAuth();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [groups, setGroups] = useState<Group[]>(mockGroups);
-  const [posts, setPosts] = useState<Post[]>(mockPosts);
+  const [groups, setGroups] = useState<Group[]>([]); // Removed mockGroups
+  const [posts, setPosts] = useState<Post[]>([]); // Removed mockPosts
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
 
   useEffect(() => {
@@ -51,20 +52,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       
       setCurrentUser(appUser);
+
+      // Since there are no groups, no need to add user to any group now.
       
-      const userExistsInGroups = groups.some(group => 
-        group.members.some(member => member.id === appUser.id)
-      );
-      
-      if (!userExistsInGroups && groups.length > 0) {
-        const updatedGroups = [...groups];
-        updatedGroups[0].members.push(appUser);
-        setGroups(updatedGroups);
-      }
     } else {
       setCurrentUser(null);
     }
-  }, [authUser, groups]);
+  }, [authUser]);
 
   const login = async (username: string, password: string): Promise<boolean> => {
     return true;
@@ -397,3 +391,4 @@ export const useApp = (): AppContextType => {
   }
   return context;
 };
+

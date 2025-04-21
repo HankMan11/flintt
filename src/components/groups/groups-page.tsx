@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { Plus, Search, UserPlus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export function GroupsPage() {
   const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups } = useApp();
@@ -23,6 +23,8 @@ export function GroupsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const { toast } = useToast();
+
+  const navigate = useNavigate();
 
   const handleCreateGroup = async () => {
     if (newGroupName.trim() === "") return;
@@ -270,9 +272,17 @@ export function GroupsPage() {
                       </div>
                     )}
                   </div>
-                  <Button size="sm" onClick={() => setActiveGroup(group)}>
-                    View Feed
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => setActiveGroup(group)}>
+                      View Feed
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setActiveGroup(group);
+                      navigate("/group-settings");
+                    }}>
+                      Settings
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

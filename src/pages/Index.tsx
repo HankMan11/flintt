@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppProvider } from "@/contexts/AppContext";
@@ -12,6 +11,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate } from "react-router-dom";
+import { GroupSettingsPage } from "@/components/groups/group-settings-page";
 
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
@@ -19,7 +19,6 @@ const Index = () => {
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    // Only redirect when loading is complete
     if (!loading) {
       if (!user) {
         navigate("/auth");
@@ -28,7 +27,6 @@ const Index = () => {
     }
   }, [loading, user, navigate]);
 
-  // Show a simple loading state while checking auth
   if (loading || checkingAuth) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
@@ -55,6 +53,7 @@ const Index = () => {
                 <Route path="/stats" element={<StatsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/groups" element={<GroupsPage />} />
+                <Route path="/group-settings" element={<GroupSettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>

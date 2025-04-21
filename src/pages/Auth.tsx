@@ -228,6 +228,17 @@ export default function AuthPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43]">
+      <div className="flex flex-col items-center w-full">
+        <div
+          className="mb-2 font-extrabold font-sans select-none user-select-none text-[#9b87f5] text-[3rem] leading-none"
+          style={{
+            letterSpacing: "0.03em",
+            textShadow: "0 2px 8px #7E69AB70"
+          }}
+        >
+          flintt
+        </div>
+      </div>
       <div className="rounded-2xl shadow-xl p-8 max-w-sm w-full bg-white/90 dark:bg-[#222]/90 flex flex-col text-center gap-4 border">
         <div className="text-5xl font-extrabold text-[#9b87f5] select-none user-select-none font-sans mb-2">
           flintt

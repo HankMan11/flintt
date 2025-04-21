@@ -1,10 +1,10 @@
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 /**
  * FlinttLogoAnimation shows a large "flintt" text
- * centered on the screen and animates it to the top position.
- * After animation, it calls onFinish to reveal the auth form.
+ * centered on the screen and animates it to the top position,
+ * blending into the page logo above the auth card at the same size.
  */
 export default function FlinttLogoAnimation({
   onFinish,
@@ -14,16 +14,18 @@ export default function FlinttLogoAnimation({
   const [animate, setAnimate] = useState(false);
   const [hide, setHide] = useState(false);
 
+  // Final position for logo (matches Auth page logo)
+  // We'll use translateY to move the logo upward to about where
+  // the card's logo sits, and scale down to the same size as the static logo.
+
   useEffect(() => {
-    // Start the animation right after mount
-    // Give a short delay for dramatic effect
+    // Delay for some dramatic effect before animating
     const timer1 = setTimeout(() => setAnimate(true), 350);
-    // After animation duration, hide the overlay
+    // After animation, fade out overlay and call onFinish
     const timer2 = setTimeout(() => {
       setHide(true);
-      // Notify parent to render the content
-      setTimeout(onFinish, 200); // Slight delay for fade out
-    }, 1750);
+      setTimeout(onFinish, 300);
+    }, 1700);
 
     return () => {
       clearTimeout(timer1);
@@ -32,27 +34,32 @@ export default function FlinttLogoAnimation({
     // eslint-disable-next-line
   }, []);
 
+  // Define the final logo size/same as on Auth page above the card (e.g. 3rem)
+  const FINAL_FONT_SIZE = "3rem";
+  const INITIAL_FONT_SIZE = "7.5rem";
+
+  // Logo animates from center, then moves up and scales down to FINAL_FONT_SIZE
   return (
     <div
       className={[
-        "fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43] transition-opacity duration-200",
+        "fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43] transition-opacity duration-300",
         hide ? "opacity-0 pointer-events-none" : "opacity-100",
       ].join(" ")}
       style={{ transitionProperty: "opacity" }}
     >
-      {/* Animated logo */}
       <span
         className={[
           "block font-extrabold font-sans",
           "text-[#9b87f5] dark:text-[#9b87f5]",
           "select-none user-select-none",
-          "origin-center transition-all duration-1000 ease-in-out",
+          "origin-top transition-all duration-1000 ease-in-out",
           animate
-            ? "scale-[0.22] translate-y-[-156px] md:translate-y-[-196px]"
+            // Move up so it exactly overlays the Auth page card logo, and scale to that size
+            ? "scale-[0.4] translate-y-[-170px] md:translate-y-[-200px]"
             : "scale-100 translate-y-0",
         ].join(" ")}
         style={{
-          fontSize: animate ? "4rem" : "9rem",
+          fontSize: animate ? FINAL_FONT_SIZE : INITIAL_FONT_SIZE,
           letterSpacing: "0.03em",
           lineHeight: 1,
           textShadow:
@@ -67,3 +74,4 @@ export default function FlinttLogoAnimation({
     </div>
   );
 }
+

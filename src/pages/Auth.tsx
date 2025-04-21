@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate } from "react-router-dom";
@@ -6,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const passwordRules = /^(?=.*[0-9])(?=.*[!@#$%^&*()_\-+={[}\]|:;"'<>,.?/~`]).{8,}$/;
 
@@ -52,25 +52,20 @@ export default function AuthPage() {
   async function uploadAvatar(file: File) {
     const BUCKET = "avatars";
     const fileName = `${Date.now()}-${file.name}`;
-    let uploadResult;
     try {
-      uploadResult = await import("@/integrations/supabase/client").then(({ supabase }) =>
-        supabase.storage.from(BUCKET).upload(fileName, file, { upsert: true })
-      );
-    } catch (error) {
+      const { data, error } = await supabase.storage.from(BUCKET).upload(fileName, file, { upsert: true });
+      
+      if (error) {
+        console.error("Supabase bucket upload error:", error);
+        throw new Error("Profile picture upload failed: " + (error.message || "Unknown error"));
+      }
+      
+      const { data: urlData } = await supabase.storage.from(BUCKET).getPublicUrl(fileName);
+      return urlData?.publicUrl ?? null;
+    } catch (error: any) {
       console.error("Exception while trying to upload avatar:", error);
-      throw new Error("Avatar upload failed (unexpected error)");
+      throw new Error("Avatar upload failed: " + (error.message || "Unexpected error"));
     }
-    const { data, error } = uploadResult;
-    if (error) {
-      console.error("Supabase bucket upload error:", error);
-      throw new Error("Profile picture upload failed: " + (error.message || "Unknown error"));
-    }
-    // Get public URL
-    const { data: urlData } = await import("@/integrations/supabase/client").then(({ supabase }) =>
-      supabase.storage.from(BUCKET).getPublicUrl(fileName)
-    );
-    return urlData?.publicUrl ?? null;
   }
 
   async function handleSignUp(e: React.FormEvent) {
@@ -124,7 +119,6 @@ export default function AuthPage() {
     }
 
     setSubmitting(false);
-    // Success: Supabase will redirect after verifying session
   }
 
   async function handleLogin(e: React.FormEvent) {

@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const passwordRules = /^(?=.*[0-9])(?=.*[!@#$%^&*()_\-+={[}\]|:;"'<>,.?/~`]).{8,}$/;
 
@@ -18,6 +20,7 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
 
   const navigate = useNavigate();
 
@@ -46,12 +49,13 @@ export default function AuthPage() {
   }
 
   // Upload avatar to Supabase storage bucket "avatars"
-  async function uploadAvatar(uid: string, file: File) {
+  async function uploadAvatar(file: File) {
     const BUCKET = "avatars";
+    const fileName = `${Date.now()}-${file.name}`;
     let uploadResult;
     try {
       uploadResult = await import("@/integrations/supabase/client").then(({ supabase }) =>
-        supabase.storage.from(BUCKET).upload(`${uid}/${file.name}`, file, { upsert: true })
+        supabase.storage.from(BUCKET).upload(fileName, file, { upsert: true })
       );
     } catch (error) {
       console.error("Exception while trying to upload avatar:", error);
@@ -64,7 +68,7 @@ export default function AuthPage() {
     }
     // Get public URL
     const { data: urlData } = await import("@/integrations/supabase/client").then(({ supabase }) =>
-      supabase.storage.from(BUCKET).getPublicUrl(`${uid}/${file.name}`)
+      supabase.storage.from(BUCKET).getPublicUrl(fileName)
     );
     return urlData?.publicUrl ?? null;
   }
@@ -99,9 +103,8 @@ export default function AuthPage() {
 
     let avatar_url: string | undefined = undefined;
     try {
-      // TEMPORARY create random uid for storage key, will be replaced by supabase user.id after signup
-      const tempUid = Math.random().toString(36).slice(2, 12);
-      avatar_url = await uploadAvatar(tempUid, avatarFile);
+      // Upload avatar first - with new approach we don't need a user ID
+      avatar_url = await uploadAvatar(avatarFile);
 
       const { error: signUpError } = await signUp({ email, password, username, avatar_url });
       if (signUpError) {
@@ -109,6 +112,11 @@ export default function AuthPage() {
         setSubmitting(false);
         return;
       }
+      
+      toast({
+        title: "Account created!",
+        description: "Your account has been created successfully. Please check your email for verification.",
+      });
     } catch (err: any) {
       setError("Sign up failed. " + (err?.message || ""));
       setSubmitting(false);

@@ -17,9 +17,9 @@ export function useSupabaseAuth() {
       setLoading(false);
     });
     // Then check current session
-    supabase.auth.getSession().then(({ data: { session }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setUser(data.session?.user ?? null);
       setLoading(false);
     });
     return () => subscription.unsubscribe();
@@ -53,4 +53,3 @@ export function useSupabaseAuth() {
 
   return { session, user, loading, signUp, signIn, signOut };
 }
-

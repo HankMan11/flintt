@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, Group, Post, Comment } from "../types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -68,6 +69,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadUserGroups = async (userId: string) => {
     setLoadingGroups(true);
     try {
+      console.log('Loading groups for user:', userId);
+      
       // Fetch groups the user is a member of
       const { data: memberships, error: membershipError } = await supabase
         .from('group_members')
@@ -81,12 +84,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
 
       if (!memberships || memberships.length === 0) {
+        console.log('No group memberships found');
         setGroups([]);
         setLoadingGroups(false);
         return;
       }
 
       const groupIds = memberships.map(m => m.group_id);
+      console.log('Found group IDs:', groupIds);
 
       // Fetch the actual group details
       const { data: groupsData, error: groupsError } = await supabase
@@ -99,6 +104,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setLoadingGroups(false);
         return;
       }
+
+      console.log('Loaded groups data:', groupsData);
 
       // For each group, get all members
       const loadedGroups: Group[] = [];
@@ -144,6 +151,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
       
+      console.log('Final loaded groups:', loadedGroups);
       setGroups(loadedGroups);
       
       // Set active group to the first one if none is selected
@@ -177,9 +185,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const createGroup = async (name: string, icon: string, description?: string): Promise<Group | null> => {
-    if (!currentUser) return null;
+    if (!currentUser || !authUser) {
+      console.error('Cannot create group: No authenticated user');
+      return null;
+    }
 
     try {
+      console.log('Creating group with:', { name, icon, description, currentUser });
+      
       // Generate a random invite code
       const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
       
@@ -199,6 +212,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         console.error('Error creating group:', groupError);
         return null;
       }
+      
+      console.log('Group created successfully:', groupData);
       
       // Add the creator as a member
       const { error: memberError } = await supabase

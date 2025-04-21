@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
@@ -21,9 +21,49 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
 
   const navigate = useNavigate();
+
+  // Handle verification parameters
+  useEffect(() => {
+    const handleEmailConfirmation = async () => {
+      const token_hash = searchParams.get('token_hash');
+      const type = searchParams.get('type');
+      
+      if (token_hash && type === 'email_confirmation') {
+        setVerifying(true);
+        setError(undefined);
+        
+        try {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash,
+            type: 'email_confirmation'
+          });
+          
+          if (error) {
+            setError("Email verification failed: " + error.message);
+            console.error("Email verification error:", error);
+          } else {
+            toast({
+              title: "Email verified!",
+              description: "Your email has been successfully verified.",
+            });
+            navigate('/');
+          }
+        } catch (err: any) {
+          setError("Verification error: " + (err?.message || "Unknown error"));
+          console.error("Verification exception:", err);
+        } finally {
+          setVerifying(false);
+        }
+      }
+    };
+
+    handleEmailConfirmation();
+  }, [searchParams, navigate, toast]);
 
   React.useEffect(() => {
     if (user && session) {
@@ -139,6 +179,21 @@ export default function AuthPage() {
       return;
     }
     setSubmitting(false);
+  }
+
+  // If we're verifying an email, show a loading state
+  if (verifying) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43]">
+        <div className="rounded-2xl shadow-xl p-8 max-w-sm w-full bg-white/90 dark:bg-[#222]/90 flex flex-col text-center gap-4 border">
+          <h1 className="text-2xl font-bold text-[#9b87f5]">Verifying your email...</h1>
+          <div className="flex justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9b87f5]"></div>
+          </div>
+          {error && <div className="text-red-500 text-sm">{error}</div>}
+        </div>
+      </div>
+    );
   }
 
   return (

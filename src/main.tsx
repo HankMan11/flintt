@@ -15,8 +15,16 @@ async function ensureAvatarsBucket() {
     
     if (!avatarsBucketExists) {
       console.log("Creating avatars bucket...");
-      // This will fail silently if the bucket already exists or if you don't have permission
-      // The SQL migration should have created the bucket already
+      const { error } = await supabase.storage.createBucket('avatars', {
+        public: true,
+        fileSizeLimit: 1024 * 1024, // 1MB
+      });
+      
+      if (error) {
+        console.error("Error creating avatars bucket:", error);
+      } else {
+        console.log("Avatars bucket created successfully");
+      }
     }
   } catch (error) {
     console.error("Error checking avatars bucket:", error);

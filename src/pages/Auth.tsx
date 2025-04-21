@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
@@ -221,6 +222,9 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-[#D6BCFA] via-[#E5DEFF] to-[#F2FCE2] dark:from-[#1A1F2C] dark:to-[#403E43]">
       <div className="rounded-2xl shadow-xl p-8 max-w-sm w-full bg-white/90 dark:bg-[#222]/90 flex flex-col text-center gap-4 border">
+        <div className="text-5xl font-extrabold text-[#9b87f5] select-none user-select-none font-sans mb-2">
+          flintt
+        </div>
         <h1 className="text-2xl font-bold text-[#9b87f5]">{form === "login" ? "Welcome Back" : "Create Account"}</h1>
         <div className="flex gap-2 mb-2 justify-center">
           <Button size="sm" variant={form === "login" ? "default" : "outline"} onClick={() => setForm("login")}>Log In</Button>
@@ -266,3 +270,4 @@ export default function AuthPage() {
     </div>
   );
 }
+

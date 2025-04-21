@@ -42,9 +42,10 @@ export default function AuthPage() {
         
         try {
           // Use 'signup' as the OTP type for email confirmation
+          // This fixes the TypeScript error by using a proper type from supabase
           const { error } = await supabase.auth.verifyOtp({
             token_hash,
-            type: 'signup'
+            type: 'signup' // Must be 'signup', 'recovery', 'invite', 'email_change', or 'phone_change'
           });
           
           if (error) {

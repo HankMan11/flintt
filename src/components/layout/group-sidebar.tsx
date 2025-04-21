@@ -3,14 +3,15 @@ import { useApp } from "@/contexts/AppContext";
 import { Group } from "@/types";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 
 export function GroupSidebar() {
-  const { groups, activeGroup, setActiveGroup, createGroup, joinGroup } = useApp();
+  const { groups, activeGroup, setActiveGroup, createGroup, joinGroup, loadingGroups } = useApp();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -18,32 +19,86 @@ export function GroupSidebar() {
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const { toast } = useToast();
 
-  const handleCreateGroup = () => {
+  const handleCreateGroup = async () => {
     if (newGroupName.trim() === "") return;
     
-    // For demo purposes, if no icon provided, use a random one
-    const icon = newGroupIcon || `https://source.unsplash.com/random/100x100/?${newGroupName.toLowerCase()}`;
+    setIsCreating(true);
     
-    createGroup(newGroupName, icon, newGroupDescription);
-    setNewGroupName("");
-    setNewGroupIcon("");
-    setNewGroupDescription("");
-    setIsCreateOpen(false);
+    try {
+      // For demo purposes, if no icon provided, use a random one
+      const icon = newGroupIcon || `https://source.unsplash.com/random/100x100/?${newGroupName.toLowerCase()}`;
+      
+      const newGroup = await createGroup(newGroupName, icon, newGroupDescription);
+      
+      if (newGroup) {
+        toast({
+          title: "Group Created",
+          description: `You've successfully created ${newGroupName}`,
+        });
+        
+        setNewGroupName("");
+        setNewGroupIcon("");
+        setNewGroupDescription("");
+        setIsCreateOpen(false);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create group. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error creating group:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCreating(false);
+    }
   };
 
-  const handleJoinGroup = () => {
+  const handleJoinGroup = async () => {
     if (inviteCode.trim() === "") return;
     
-    const success = joinGroup(inviteCode);
-    if (!success) {
-      setJoinError("Invalid invite code. Please try again.");
-      return;
-    }
-    
-    setInviteCode("");
+    setIsJoining(true);
     setJoinError("");
-    setIsJoinOpen(false);
+    
+    try {
+      const success = await joinGroup(inviteCode);
+      
+      if (success) {
+        toast({
+          title: "Group Joined",
+          description: "You've successfully joined the group",
+        });
+        
+        setInviteCode("");
+        setIsJoinOpen(false);
+      } else {
+        setJoinError("Invalid invite code. Please try again.");
+        toast({
+          title: "Error",
+          description: "Failed to join group. Invalid invite code.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error joining group:", error);
+      setJoinError("An unexpected error occurred");
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsJoining(false);
+    }
   };
 
   return (
@@ -53,14 +108,26 @@ export function GroupSidebar() {
       </div>
       <ScrollArea className="flex-1">
         <div className="p-4">
-          {groups.map((group) => (
-            <GroupItem
-              key={group.id}
-              group={group}
-              isActive={activeGroup?.id === group.id}
-              onClick={() => setActiveGroup(group)}
-            />
-          ))}
+          {loadingGroups ? (
+            <div className="flex flex-col items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="mt-2 text-sm text-muted-foreground">Loading groups...</p>
+            </div>
+          ) : groups.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <p className="text-muted-foreground">No groups yet</p>
+              <p className="text-sm text-muted-foreground">Create or join a group to get started</p>
+            </div>
+          ) : (
+            groups.map((group) => (
+              <GroupItem
+                key={group.id}
+                group={group}
+                isActive={activeGroup?.id === group.id}
+                onClick={() => setActiveGroup(group)}
+              />
+            ))
+          )}
         </div>
       </ScrollArea>
       <div className="border-t p-4">
@@ -102,7 +169,19 @@ export function GroupSidebar() {
                     onChange={(e) => setNewGroupDescription(e.target.value)}
                   />
                 </div>
-                <Button onClick={handleCreateGroup}>Create Group</Button>
+                <Button 
+                  onClick={handleCreateGroup} 
+                  disabled={isCreating || newGroupName.trim() === ""}
+                >
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Group"
+                  )}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>
@@ -128,7 +207,19 @@ export function GroupSidebar() {
                   />
                   {joinError && <p className="text-sm text-destructive">{joinError}</p>}
                 </div>
-                <Button onClick={handleJoinGroup}>Join Group</Button>
+                <Button 
+                  onClick={handleJoinGroup}
+                  disabled={isJoining || inviteCode.trim() === ""}
+                >
+                  {isJoining ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Joining...
+                    </>
+                  ) : (
+                    "Join Group"
+                  )}
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

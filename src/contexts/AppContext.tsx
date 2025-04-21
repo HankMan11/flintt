@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { User, Group, Post, Comment } from "../types";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
@@ -15,9 +14,9 @@ interface AppContextType {
   setActiveGroup: (group: Group | null) => void;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  createGroup: (name: string, icon: string, description?: string) => void;
-  joinGroup: (inviteCode: string) => boolean;
-  leaveGroup: (groupId: string) => void;
+  createGroup: (name: string, icon: string, description?: string) => Promise<Group | null>;
+  joinGroup: (inviteCode: string) => Promise<boolean>;
+  leaveGroup: (groupId: string) => Promise<boolean>;
   addPost: (groupId: string, caption: string, mediaUrl: string, mediaType: 'image' | 'video') => void;
   deletePost: (postId: string) => void;
   likePost: (postId: string) => void;
@@ -28,6 +27,7 @@ interface AppContextType {
   getUserStats: (userId: string, groupId?: string) => any;
   getGroupStats: (groupId: string) => any;
   getSavedPosts: () => Post[];
+  loadingGroups: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -35,10 +35,12 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user: authUser } = useSupabaseAuth();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [groups, setGroups] = useState<Group[]>([]); // Removed mockGroups
-  const [posts, setPosts] = useState<Post[]>([]); // Removed mockPosts
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
+  const [loadingGroups, setLoadingGroups] = useState(true);
 
+  // Set up current user when auth changes
   useEffect(() => {
     if (authUser) {
       const username = authUser.user_metadata?.username || authUser.email?.split('@')[0] || 'User';
@@ -52,13 +54,118 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       
       setCurrentUser(appUser);
-
-      // Since there are no groups, no need to add user to any group now.
       
+      // Load user's groups when user changes
+      loadUserGroups(authUser.id);
     } else {
       setCurrentUser(null);
+      setGroups([]);
+      setActiveGroup(null);
     }
   }, [authUser]);
+
+  // Load user's groups from Supabase
+  const loadUserGroups = async (userId: string) => {
+    setLoadingGroups(true);
+    try {
+      // Fetch groups the user is a member of
+      const { data: memberships, error: membershipError } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', userId);
+
+      if (membershipError) {
+        console.error('Error loading group memberships:', membershipError);
+        setLoadingGroups(false);
+        return;
+      }
+
+      if (!memberships || memberships.length === 0) {
+        setGroups([]);
+        setLoadingGroups(false);
+        return;
+      }
+
+      const groupIds = memberships.map(m => m.group_id);
+
+      // Fetch the actual group details
+      const { data: groupsData, error: groupsError } = await supabase
+        .from('groups')
+        .select('*')
+        .in('id', groupIds);
+
+      if (groupsError) {
+        console.error('Error loading groups:', groupsError);
+        setLoadingGroups(false);
+        return;
+      }
+
+      // For each group, get all members
+      const loadedGroups: Group[] = [];
+      
+      for (const groupData of groupsData || []) {
+        const { data: memberData, error: memberError } = await supabase
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', groupData.id);
+          
+        if (memberError) {
+          console.error(`Error loading members for group ${groupData.id}:`, memberError);
+          continue;
+        }
+        
+        // For simplicity, we'll use mockUsers for member data
+        // In a real app, you'd fetch the actual profile data for each member
+        const members = memberData.map(m => {
+          const mockUser = mockUsers.find(u => u.id === m.user_id) || {
+            id: m.user_id,
+            name: 'User',
+            username: 'user',
+            avatar: 'https://source.unsplash.com/random/100x100/?avatar'
+          };
+          return mockUser;
+        });
+        
+        // Make sure the current user is included in members
+        if (!members.some(m => m.id === userId)) {
+          if (currentUser) {
+            members.push(currentUser);
+          }
+        }
+        
+        loadedGroups.push({
+          id: groupData.id,
+          name: groupData.name,
+          icon: groupData.icon,
+          description: groupData.description || undefined,
+          members,
+          createdAt: groupData.created_at,
+          inviteCode: groupData.invite_code
+        });
+      }
+      
+      setGroups(loadedGroups);
+      
+      // Set active group to the first one if none is selected
+      if (loadedGroups.length > 0 && !activeGroup) {
+        setActiveGroup(loadedGroups[0]);
+      } else if (activeGroup) {
+        // Update active group if it's in the loaded groups
+        const updatedActiveGroup = loadedGroups.find(g => g.id === activeGroup.id);
+        if (updatedActiveGroup) {
+          setActiveGroup(updatedActiveGroup);
+        } else if (loadedGroups.length > 0) {
+          setActiveGroup(loadedGroups[0]);
+        } else {
+          setActiveGroup(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error in loadUserGroups:', error);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
 
   const login = async (username: string, password: string): Promise<boolean> => {
     return true;
@@ -66,58 +173,150 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = () => {
     setActiveGroup(null);
+    setGroups([]);
   };
 
-  const createGroup = (name: string, icon: string, description?: string) => {
-    if (!currentUser) return;
+  const createGroup = async (name: string, icon: string, description?: string): Promise<Group | null> => {
+    if (!currentUser) return null;
 
-    const newGroup: Group = {
-      id: Date.now().toString(),
-      name,
-      icon,
-      description,
-      members: [currentUser],
-      createdAt: new Date().toISOString(),
-      inviteCode: Math.random().toString(36).substring(2, 8).toUpperCase()
-    };
-
-    setGroups([...groups, newGroup]);
+    try {
+      // Generate a random invite code
+      const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      
+      // Insert the new group into Supabase
+      const { data: groupData, error: groupError } = await supabase
+        .from('groups')
+        .insert({
+          name,
+          icon,
+          description,
+          invite_code: inviteCode
+        })
+        .select()
+        .single();
+      
+      if (groupError) {
+        console.error('Error creating group:', groupError);
+        return null;
+      }
+      
+      // Add the creator as a member
+      const { error: memberError } = await supabase
+        .from('group_members')
+        .insert({
+          group_id: groupData.id,
+          user_id: currentUser.id
+        });
+      
+      if (memberError) {
+        console.error('Error adding creator as member:', memberError);
+        // Try to clean up the created group
+        await supabase.from('groups').delete().eq('id', groupData.id);
+        return null;
+      }
+      
+      // Create the group object
+      const newGroup: Group = {
+        id: groupData.id,
+        name: groupData.name,
+        icon: groupData.icon,
+        description: groupData.description || undefined,
+        members: [currentUser],
+        createdAt: groupData.created_at,
+        inviteCode: groupData.invite_code
+      };
+      
+      // Update state
+      setGroups([...groups, newGroup]);
+      setActiveGroup(newGroup);
+      
+      return newGroup;
+    } catch (error) {
+      console.error('Error in createGroup:', error);
+      return null;
+    }
   };
 
-  const joinGroup = (inviteCode: string): boolean => {
+  const joinGroup = async (inviteCode: string): Promise<boolean> => {
     if (!currentUser) return false;
 
-    const groupIndex = groups.findIndex(g => g.inviteCode === inviteCode);
-    if (groupIndex === -1) return false;
-
-    if (groups[groupIndex].members.some(m => m.id === currentUser.id)) {
+    try {
+      // Find the group with the given invite code
+      const { data: groupData, error: groupError } = await supabase
+        .from('groups')
+        .select('*')
+        .eq('invite_code', inviteCode)
+        .single();
+      
+      if (groupError || !groupData) {
+        console.error('Error finding group:', groupError);
+        return false;
+      }
+      
+      // Check if the user is already a member
+      const { data: existingMembership, error: membershipError } = await supabase
+        .from('group_members')
+        .select('*')
+        .eq('group_id', groupData.id)
+        .eq('user_id', currentUser.id)
+        .single();
+      
+      if (existingMembership) {
+        // User is already a member, just update the state
+        await loadUserGroups(currentUser.id);
+        return true;
+      }
+      
+      // Add the user to the group
+      const { error: joinError } = await supabase
+        .from('group_members')
+        .insert({
+          group_id: groupData.id,
+          user_id: currentUser.id
+        });
+      
+      if (joinError) {
+        console.error('Error joining group:', joinError);
+        return false;
+      }
+      
+      // Reload groups to get updated list
+      await loadUserGroups(currentUser.id);
       return true;
+    } catch (error) {
+      console.error('Error in joinGroup:', error);
+      return false;
     }
-
-    const updatedGroups = [...groups];
-    updatedGroups[groupIndex].members.push(currentUser);
-    setGroups(updatedGroups);
-    return true;
   };
 
-  const leaveGroup = (groupId: string) => {
-    if (!currentUser) return;
+  const leaveGroup = async (groupId: string): Promise<boolean> => {
+    if (!currentUser) return false;
 
-    const groupIndex = groups.findIndex(g => g.id === groupId);
-    if (groupIndex === -1) return;
-
-    const updatedGroups = [...groups];
-    updatedGroups[groupIndex].members = updatedGroups[groupIndex].members.filter(
-      m => m.id !== currentUser.id
-    );
-
-    if (updatedGroups[groupIndex].members.length === 0) {
-      updatedGroups.splice(groupIndex, 1);
-    }
-
-    setGroups(updatedGroups);
-    if (activeGroup?.id === groupId) {
-      setActiveGroup(null);
+    try {
+      // Remove the user from the group
+      const { error } = await supabase
+        .from('group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('user_id', currentUser.id);
+      
+      if (error) {
+        console.error('Error leaving group:', error);
+        return false;
+      }
+      
+      // Update state
+      const updatedGroups = groups.filter(g => g.id !== groupId);
+      setGroups(updatedGroups);
+      
+      if (activeGroup?.id === groupId) {
+        setActiveGroup(updatedGroups.length > 0 ? updatedGroups[0] : null);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error in leaveGroup:', error);
+      return false;
     }
   };
 
@@ -376,7 +575,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         filterGroupPosts,
         getUserStats,
         getGroupStats,
-        getSavedPosts
+        getSavedPosts,
+        loadingGroups
       }}
     >
       {children}
@@ -391,4 +591,3 @@ export const useApp = (): AppContextType => {
   }
   return context;
 };
-

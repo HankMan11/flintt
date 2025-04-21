@@ -1,3 +1,5 @@
+
+import React, { useEffect } from "react";
 import LandingPage from "@/components/auth/LandingPage";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppProvider } from "@/contexts/AppContext";
@@ -16,7 +18,7 @@ const Index = () => {
   const { user, loading } = useSupabaseAuth();
   const navigate = useNavigate();
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!loading && !user) {
       navigate("/auth");
     }

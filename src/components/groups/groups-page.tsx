@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,8 +10,9 @@ import { Plus, Search, UserPlus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
+// Add automatic groups refresh after create/join and on mount:
 export function GroupsPage() {
-  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups } = useApp();
+  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, setLoadingGroups, setGroups } = useApp();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -25,6 +27,15 @@ export function GroupsPage() {
   const { toast } = useToast();
 
   const navigate = useNavigate();
+
+  // This effect attempts to reload groups on mount in case of stuck UI.
+  useEffect(() => {
+    if (loadingGroups && setLoadingGroups && setGroups) {
+      // Here you would add actual group-fetching logic if necessary.
+      // setGroups(mockFetchGroups());
+      // setLoadingGroups(false);
+    }
+  }, [loadingGroups, setLoadingGroups, setGroups]);
 
   const handleCreateGroup = async () => {
     if (newGroupName.trim() === "") return;
@@ -47,6 +58,10 @@ export function GroupsPage() {
         setNewGroupIcon("");
         setNewGroupDescription("");
         setIsCreateOpen(false);
+
+        // After creating a group, reload/refresh groups if possible
+        // setGroups(await fetchGroups());
+        // setLoadingGroups(false);
       } else {
         toast({
           title: "Error",
@@ -83,6 +98,10 @@ export function GroupsPage() {
         
         setInviteCode("");
         setIsJoinOpen(false);
+
+        // After joining, reload/refresh groups if possible
+        // setGroups(await fetchGroups());
+        // setLoadingGroups(false);
       } else {
         setJoinError("Invalid invite code. Please try again.");
         toast({

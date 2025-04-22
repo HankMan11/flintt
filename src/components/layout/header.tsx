@@ -1,4 +1,3 @@
-
 import { Bell, Home, LogOut, Settings, User, BarChart } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,9 +11,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "react-router-dom";
+import { useNotifications } from "@/contexts/NotificationsContext";
+import { useState } from "react";
+import { NotificationsDrawer } from "@/components/notifications/NotificationsDrawer";
 
 export function Header() {
   const { currentUser, logout, activeGroup } = useApp();
+  const { unreadCount } = useNotifications();
+  const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
 
   return (
@@ -63,9 +67,16 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           
-          <Button variant="ghost" size="icon" className="relative">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative"
+            onClick={() => setShowNotifications(true)}
+          >
             <Bell className="h-5 w-5" />
-            <span className="absolute top-1 right-1 flex h-2 w-2 rounded-full bg-primary"></span>
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-primary"></span>
+            )}
           </Button>
           
           {currentUser ? (
@@ -117,7 +128,11 @@ export function Header() {
           )}
         </div>
       </div>
+
+      <NotificationsDrawer 
+        open={showNotifications} 
+        onClose={() => setShowNotifications(false)} 
+      />
     </header>
   );
 }
-

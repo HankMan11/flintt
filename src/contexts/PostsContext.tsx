@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Post, Comment, User, Group } from "@/types";
@@ -11,10 +10,10 @@ interface PostsContextType {
   setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
   addPost: (groupId: string, caption: string, mediaUrl: string, mediaType: "image" | "video") => Promise<void>;
   deletePost: (postId: string) => void;
-  likePost: (postId: string) => void;
-  dislikePost: (postId: string) => void;
-  heartPost: (postId: string) => void;
-  addComment: (postId: string, content: string, parentCommentId?: string) => void;
+  likePost: (postId: string) => Promise<void>;
+  dislikePost: (postId: string) => Promise<void>;
+  heartPost: (postId: string) => Promise<void>;
+  addComment: (postId: string, content: string, parentCommentId?: string) => Promise<void>;
 }
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
@@ -73,60 +72,162 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
     setPosts(posts => posts.filter(p => p.id !== postId));
   };
 
-  const likePost = (postId: string) => {
+  const likePost = async (postId: string) => {
     if (!currentUser) return;
 
-    setPosts(posts => posts.map(post => {
-      if (post.id !== postId) return post;
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
       let newLikes = post.likes;
       let newDislikes = post.dislikes;
+      let shouldNotify = false;
+
       if (newLikes.includes(currentUser.id)) {
         newLikes = newLikes.filter(id => id !== currentUser.id);
       } else {
         newLikes = [...newLikes, currentUser.id];
         newDislikes = newDislikes.filter(id => id !== currentUser.id);
+        shouldNotify = post.user.id !== currentUser.id;
       }
-      return { ...post, likes: newLikes, dislikes: newDislikes };
-    }));
+
+      const { error } = await supabase
+        .from('posts')
+        .update({
+          likes: newLikes,
+          dislikes: newDislikes
+        })
+        .eq('id', postId);
+
+      if (error) throw error;
+
+      if (shouldNotify) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: post.user.id,
+            type: 'like',
+            content: `${currentUser.name} liked your post`,
+            related_post_id: postId,
+            actor_id: currentUser.id
+          });
+      }
+
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, likes: newLikes, dislikes: newDislikes }
+          : p
+      ));
+    } catch (error) {
+      console.error('Error updating post:', error);
+    }
   };
 
-  const dislikePost = (postId: string) => {
+  const dislikePost = async (postId: string) => {
     if (!currentUser) return;
 
-    setPosts(posts => posts.map(post => {
-      if (post.id !== postId) return post;
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
       let newDislikes = post.dislikes;
       let newLikes = post.likes;
+      let shouldNotify = false;
+
       if (newDislikes.includes(currentUser.id)) {
         newDislikes = newDislikes.filter(id => id !== currentUser.id);
       } else {
         newDislikes = [...newDislikes, currentUser.id];
         newLikes = newLikes.filter(id => id !== currentUser.id);
+        shouldNotify = post.user.id !== currentUser.id;
       }
-      return { ...post, dislikes: newDislikes, likes: newLikes };
-    }));
+
+      const { error } = await supabase
+        .from('posts')
+        .update({
+          dislikes: newDislikes,
+          likes: newLikes
+        })
+        .eq('id', postId);
+
+      if (error) throw error;
+
+      if (shouldNotify) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: post.user.id,
+            type: 'dislike',
+            content: `${currentUser.name} disliked your post`,
+            related_post_id: postId,
+            actor_id: currentUser.id
+          });
+      }
+
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, dislikes: newDislikes, likes: newLikes }
+          : p
+      ));
+    } catch (error) {
+      console.error('Error updating post:', error);
+    }
   };
 
-  const heartPost = (postId: string) => {
+  const heartPost = async (postId: string) => {
     if (!currentUser) return;
 
-    setPosts(posts => posts.map(post => {
-      if (post.id !== postId) return post;
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
       let newHearts = post.hearts;
+      let shouldNotify = false;
+
       if (newHearts.includes(currentUser.id)) {
         newHearts = newHearts.filter(id => id !== currentUser.id);
       } else {
         newHearts = [...newHearts, currentUser.id];
+        shouldNotify = post.user.id !== currentUser.id;
       }
-      return { ...post, hearts: newHearts };
-    }));
+
+      const { error } = await supabase
+        .from('posts')
+        .update({
+          hearts: newHearts
+        })
+        .eq('id', postId);
+
+      if (error) throw error;
+
+      if (shouldNotify) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: post.user.id,
+            type: 'heart',
+            content: `${currentUser.name} saved your post`,
+            related_post_id: postId,
+            actor_id: currentUser.id
+          });
+      }
+
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, hearts: newHearts }
+          : p
+      ));
+    } catch (error) {
+      console.error('Error updating post:', error);
+    }
   };
 
-  const addComment = (postId: string, content: string, parentCommentId?: string) => {
+  const addComment = async (postId: string, content: string, parentCommentId?: string) => {
     if (!currentUser) return;
 
-    setPosts(posts => posts.map(post => {
-      if (post.id !== postId) return post;
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
 
       const newComment: Comment = {
         id: Date.now().toString(),
@@ -155,8 +256,27 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       } else {
         post.comments.push(newComment);
       }
-      return { ...post };
-    }));
+
+      if (post.user.id !== currentUser.id) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: post.user.id,
+            type: 'comment',
+            content: `${currentUser.name} commented on your post`,
+            related_post_id: postId,
+            actor_id: currentUser.id
+          });
+      }
+
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p }
+          : p
+      ));
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
   };
 
   return (

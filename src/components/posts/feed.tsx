@@ -1,4 +1,3 @@
-
 import { useApp } from "@/contexts/AppContext";
 import { CreatePost } from "./create-post";
 import { PostCard } from "./post-card";
@@ -8,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
+import { ChartBar } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export function Feed() {
   const { activeGroup, filterGroupPosts, currentUser } = useApp();
@@ -23,32 +24,32 @@ export function Feed() {
   // IMPORTANT: Always define useMemo hooks unconditionally, even if they might not be used
   // This ensures React hook order is consistent between renders
   const allPosts = activeGroup ? filterGroupPosts(activeGroup.id) : [];
-  
+
   // Filter posts based on search and filters
   const filteredPosts = useMemo(() => {
     return allPosts.filter(post => {
       // Skip filtering if post is undefined
       if (!post) return false;
-      
+
       // Apply search query filter
       if (searchQuery) {
         const matchesCaption = post.caption?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesUsername = post.user.username.toLowerCase().includes(searchQuery.toLowerCase()) || 
                                post.user.name.toLowerCase().includes(searchQuery.toLowerCase());
-        
+
         if (!matchesCaption && !matchesUsername) return false;
       }
-      
+
       // Apply media type filters
       if (filters.onlyImages && post.mediaType !== 'image') return false;
       if (filters.onlyVideos && post.mediaType !== 'video') return false;
-      
+
       // Apply reaction filters (only if user is logged in)
       if (currentUser) {
         if (filters.onlyLiked && !post.likes.includes(currentUser.id)) return false;
         if (filters.onlySaved && !post.hearts.includes(currentUser.id)) return false;
       }
-      
+
       return true;
     });
   }, [allPosts, searchQuery, filters, currentUser]);
@@ -72,6 +73,9 @@ export function Feed() {
       </div>
     );
   }
+
+  const navigate = useNavigate();
+  const isWeekEnd = new Date().getDay() === 0; // Sunday
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
@@ -115,6 +119,17 @@ export function Feed() {
 
       <CreatePost />
 
+      {isWeekEnd && (
+        <Button 
+          className="w-full mb-4" 
+          variant="outline"
+          onClick={() => navigate("/stats")}
+        >
+          <ChartBar className="w-4 h-4 mr-2" />
+          View Weekly Stats
+        </Button>
+      )}
+
       {filteredPosts.length === 0 ? (
         <Card className="p-6 text-center">
           <CardHeader>
@@ -131,7 +146,7 @@ export function Feed() {
           </CardHeader>
         </Card>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-6 overflow-y-auto h-[calc(100vh-16rem)] px-1">
           {filteredPosts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}

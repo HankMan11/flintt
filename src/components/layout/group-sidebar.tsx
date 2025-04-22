@@ -291,7 +291,7 @@ function GroupItem({ group, isActive, onClick }: GroupItemProps) {
       onClick={onClick}
     >
       <img
-        src={group.imageUrl || group.icon}
+        src={group.imageUrl || group.icon || 'https://via.placeholder.com/40'}
         alt={group.name}
         className="h-10 w-10 rounded-full object-cover"
       />

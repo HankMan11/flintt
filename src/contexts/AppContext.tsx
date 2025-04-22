@@ -168,11 +168,32 @@ export const useApp = () => {
       try {
         const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
         
+        // Upload image if provided
+        let imageUrl = icon;
+        if (icon instanceof File) {
+          const ext = icon.name.split('.').pop();
+          const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('group-images')
+            .upload(filename, icon);
+
+          if (uploadError) {
+            console.error("Error uploading image:", uploadError);
+            return null;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from('group-images')
+            .getPublicUrl(filename);
+          
+          imageUrl = publicUrl;
+        }
+
         const { data: groupData, error: groupError } = await supabase
           .from('groups')
           .insert({
             name,
-            icon,
+            icon: imageUrl,
             description,
             invite_code: inviteCode
           })

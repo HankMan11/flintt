@@ -45,6 +45,7 @@ export function GroupsPage() {
   const [groupImage, setGroupImage] = useState<string | null>(null); //Added state for image preview
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [newGroupIcon, setNewGroupIcon] = useState(''); // Added state for new group icon
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -114,14 +115,17 @@ export function GroupsPage() {
     setIsCreating(true);
     try {
       let imageUrl = null;
-      if (selectedFile) {
+      if (newGroupIcon) {
+        setSelectedFile(newGroupIcon);
         imageUrl = await handleImageUpload();
       }
+
 
       await createGroup(newGroupName, imageUrl, newGroupDescription);
       setNewGroupName("");
       setNewGroupDescription("");
       setSelectedFile(null);
+      setNewGroupIcon(''); // Clear the icon
       setGroupImage(null); //Clear image preview
       if (fileInputRef.current) fileInputRef.current.value = "";
       setIsCreateOpen(false);
@@ -220,35 +224,15 @@ export function GroupsPage() {
                     onChange={(e) => setNewGroupName(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="group-image">Group Image</Label>
+                <div className="grid gap-2">
+                  <Label htmlFor="image">Group Image</Label>
                   <Input
-                    id="group-image"
+                    id="image"
                     type="file"
-                    ref={fileInputRef}
                     accept="image/*"
-                    onChange={(e) => {
-                      setSelectedFile(e.target.files?.[0] || null);
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onloadend = () => {
-                          setGroupImage(reader.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
+                    onChange={(e) => setNewGroupIcon(e.target.files?.[0] || null)}
                   />
                 </div>
-                {groupImage && (
-                  <div className="mt-2">
-                    <img
-                      src={groupImage}
-                      alt="Group preview"
-                      className="w-20 h-20 rounded-full object-cover"
-                    />
-                  </div>
-                )}
                 <div className="grid gap-2">
                   <Label htmlFor="description">Description (optional)</Label>
                   <Input

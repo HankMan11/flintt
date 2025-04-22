@@ -125,6 +125,7 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
           description: group.description,
           icon: group.icon,
           inviteCode: group.invite_code,
+          createdAt: group.created_at, // Add the createdAt property
           members: members,
         });
       }

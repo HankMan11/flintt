@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Heart, MessageCircle, ThumbsDown, ThumbsUp, Flag, Ban } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { Post } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,6 +8,14 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { CommentList } from "./comment-list";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ReportDialog } from "@/components/report-dialog"; // Import ReportDialog
+
 
 interface PostCardProps {
   post: Post;
@@ -19,6 +27,7 @@ export function PostCard({ post }: PostCardProps) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false); // Added state for image modal
+  const [reportDialogOpen, setReportDialogOpen] = useState(false); // Added state for report dialog
 
   if (!post || !post.user) {
     return null; // Safely handle invalid posts
@@ -56,23 +65,53 @@ export function PostCard({ post }: PostCardProps) {
           <AvatarFallback>{post.user.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">{post.user.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(() => {
-  const now = new Date();
-  const createdAt = new Date(post.createdAt);
-  const diffInSeconds = Math.floor((now.getTime() - createdAt.getTime()) / 1000);
-
-  if (diffInSeconds < 60) {
-    return "Just now";
-  }
-  return formatDistanceToNow(createdAt, { addSuffix: true });
-})()}
-              </p>
-            </div>
+          <div className="flex items-center justify-between w-full">
+            <p className="text-sm font-medium">{post.user.name}</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <Flag className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setReportDialogOpen(true)}>
+                  <Flag className="h-4 w-4 mr-2" />
+                  Report Post
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  if (confirm("Are you sure you want to block this user?")) {
+                    // TODO: Implement block functionality
+                    alert("User blocked");
+                  }
+                }}>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Block User
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ReportDialog
+              open={reportDialogOpen}
+              onOpenChange={setReportDialogOpen}
+              type="post"
+              onReport={(reason, details) => {
+                // TODO: Implement report functionality
+                console.log("Report:", { reason, details, postId: post.id });
+                alert("Report submitted");
+              }}
+            />
           </div>
+          <p className="text-xs text-muted-foreground">
+            {(() => {
+              const now = new Date();
+              const createdAt = new Date(post.createdAt);
+              const diffInSeconds = Math.floor((now.getTime() - createdAt.getTime()) / 1000);
+
+              if (diffInSeconds < 60) {
+                return "Just now";
+              }
+              return formatDistanceToNow(createdAt, { addSuffix: true });
+            })()}
+          </p>
         </div>
       </CardHeader>
       <CardContent className="p-0">

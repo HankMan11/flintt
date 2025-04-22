@@ -27,13 +27,14 @@ export interface Comment {
 
 export interface Notification {
   id: string;
-  userId: string;
-  message: string;
-  read: boolean;
-  createdAt: string;
-  type: 'reaction' | 'comment' | 'post';
-  postId?: string;
-  groupId?: string;
+  user_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  type: 'like' | 'dislike' | 'heart' | 'comment';
+  related_post_id?: string;
+  related_group_id?: string;
+  actor_id?: string;
 }
 
 export interface Post {

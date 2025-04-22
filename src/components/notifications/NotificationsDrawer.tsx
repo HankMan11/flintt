@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -36,24 +35,24 @@ export function NotificationsDrawer() {
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-8rem)] pr-4">
           {notifications.length === 0 ? (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              No notifications yet
+            <div className="flex h-[450px] items-center justify-center">
+              <p className="text-sm text-muted-foreground">No notifications yet</p>
             </div>
           ) : (
-            <div className="space-y-4 py-4">
+            <div className="space-y-4">
               {notifications.map((notification) => (
                 <div
                   key={notification.id}
                   className={`rounded-lg border p-4 ${
-                    notification.read ? 'bg-background' : 'bg-muted'
+                    notification.is_read ? 'bg-background' : 'bg-muted'
                   }`}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
+                  onClick={() => !notification.is_read && markAsRead(notification.id)}
                   role="button"
                   tabIndex={0}
                 >
-                  <p className="text-sm">{notification.message}</p>
+                  <p className="text-sm">{notification.content}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                   </p>
                 </div>
               ))}

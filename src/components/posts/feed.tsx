@@ -28,7 +28,8 @@ export function Feed() {
 
   // Filter posts based on search and filters
   const filteredPosts = useMemo(() => {
-    return allPosts.filter(post => {
+    let filtered = allPosts.filter(post => {
+      if (!post) return false;
       // Skip filtering if post is undefined
       if (!post) return false;
 

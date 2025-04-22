@@ -20,6 +20,8 @@ export interface PostFilters {
   onlyVideos: boolean;
   onlyLiked: boolean;
   onlySaved: boolean;
+  dateRange?: 'today' | 'week' | 'month' | 'all';
+  sortBy?: 'recent' | 'popular' | 'comments';
 }
 
 export function PostSearch({ onSearch, onFilterChange }: PostSearchProps) {

@@ -5,7 +5,7 @@ import { PostsProvider, usePosts } from "./PostsContext";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationsProvider } from "./NotificationsContext";
 
-const useApp = () => {
+export const useApp = () => {
   const auth = useAuth();
   const groups = useGroups();
   const posts = usePosts();

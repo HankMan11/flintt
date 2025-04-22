@@ -162,9 +162,8 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
   );
 };
 
-const usePosts = (): PostsContextType => {
+export const usePosts = (): PostsContextType => {
   const ctx = useContext(PostsContext);
   if (!ctx) throw new Error("usePosts must be used within a PostsProvider");
   return ctx;
 };
-export {usePosts};

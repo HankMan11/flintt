@@ -67,7 +67,7 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-
+          
           <Sheet>
             <SheetTrigger asChild>
               <Button 
@@ -85,7 +85,7 @@ export function Header() {
             </SheetTrigger>
             <NotificationsDrawer />
           </Sheet>
-
+          
           {currentUser ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

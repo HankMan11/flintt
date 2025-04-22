@@ -131,7 +131,7 @@ export function Feed() {
         </Button>
       )}
 
-      {!filteredPosts || filteredPosts.length === 0 ? (
+      {filteredPosts.length === 0 ? (
         <Card className="p-6 text-center">
           <CardHeader>
             <CardTitle>

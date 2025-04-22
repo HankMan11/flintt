@@ -3,7 +3,6 @@ import { useApp } from "@/contexts/AppContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
-import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   DropdownMenu,

@@ -25,6 +25,17 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export interface Notification {
+  id: string;
+  userId: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  type: 'reaction' | 'comment' | 'post';
+  postId?: string;
+  groupId?: string;
+}
+
 export interface Post {
   id: string;
   user: User;

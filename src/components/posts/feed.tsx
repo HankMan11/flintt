@@ -54,6 +54,9 @@ export function Feed() {
     });
   }, [allPosts, searchQuery, filters, currentUser]);
 
+  const navigate = useNavigate();
+  const isWeekEnd = new Date().getDay() === 0; // Sunday
+
   if (!activeGroup) {
     return (
       <div className="px-4 py-6 md:px-6 lg:px-8">
@@ -73,9 +76,6 @@ export function Feed() {
       </div>
     );
   }
-
-  const navigate = useNavigate();
-  const isWeekEnd = new Date().getDay() === 0; // Sunday
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">

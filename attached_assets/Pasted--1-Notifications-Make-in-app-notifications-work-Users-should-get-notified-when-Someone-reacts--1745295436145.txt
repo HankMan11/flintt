@@ -1,0 +1,113 @@
+🔔 1. Notifications
+Make in-app notifications work. Users should get notified when:
+
+Someone reacts to their post (like, dislike, heart)
+
+Someone comments on their post
+
+A new post is made in one of their joined groups
+
+🌗 2. Dark Mode Toggle
+Fix the broken dark mode toggle in settings:
+
+Toggling switches between dark and light modes
+
+User preference is saved for their next session
+
+🕒 3. Post Timestamp
+Change “In a minute” to say “Just now” for posts less than a minute old.
+
+🖼️ 4. Group Image Upload
+Let users upload an image when creating or editing a group:
+
+No URL required
+
+Show the group image as the icon on the homepage
+
+🔗 5. Group Invite Code
+Enable group invite links or codes:
+
+Users can copy and share them
+
+Others can join a group using the code
+
+🔍 6. Full Image View
+Allow tapping a photo to open it in full screen:
+
+Include a swipe down or close button to exit
+
+📜 7. Scrollable Feed
+Make the feed scrollable so users can always access "Create Group" and "Join Group" buttons without excessive scrolling.
+
+📊 8. Weekly Stats Button
+At the end of each week, show a “Weekly Stats” button for each group:
+
+Clicking shows:
+
+Who posted the most
+
+Who got the most likes/hearts/dislikes
+
+Who reacted the most
+
+Stats reset weekly and are specific to each group
+
+⚙️ 9. Group Settings Panel
+Add a Group Settings screen for group admins where they can:
+
+Change the group name and image
+
+Add or remove members
+
+Copy/share the group invite link
+
+Optionally archive or delete the group
+
+👑 10. Group Roles
+Each group should support:
+
+Admins (can manage group settings and members)
+
+Members (can post, react, and comment)
+
+💬 11. Post Reactions Summary
+Let users tap on a post's like/dislike/heart count to:
+
+View a list of who reacted
+
+See what type of reaction they gave
+
+📌 12. Pinned Posts
+Allow posts to be pinned to the top of the group feed (by admins only)
+
+🔥 13. Activity Streaks
+Track daily activity streaks:
+
+Show how many days in a row a user has posted, reacted, or commented in a group
+
+Display streaks on user profiles or under their posts
+
+📝 14. Group Description
+Let groups have a short bio or description visible on the group’s page
+
+🔎 15. Search Bar
+Add a search bar to:
+
+Search for groups
+
+Search posts by caption or username
+
+✏️ 16. Post Edit & Delete
+Let users:
+
+Edit their post caption
+
+Delete their own posts
+
+🚨 17. Report & Block
+Basic safety tools:
+
+Report a post or user
+
+Block a user from reacting or commenting on your posts
+

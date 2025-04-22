@@ -183,16 +183,25 @@ export function PostCard({ post }: PostCardProps) {
 function ImageModal({ imageUrl, isOpen, onClose }: { imageUrl: string; isOpen: boolean; onClose: () => void }) {
   if (!isOpen) return null;
 
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.currentTarget === e.target) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
-      <div className="relative w-full max-w-2xl bg-white rounded-lg shadow-lg">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center"
+      onClick={handleOverlayClick}
+    >
+      <div className="relative max-w-md w-full bg-white rounded-lg shadow-lg">
         <button
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
           onClick={onClose}
         >
           &times;
         </button>
-        <img src={imageUrl} alt="Full Image" className="w-full h-auto" />
+        <img src={imageUrl} alt="Full Image" className="w-full h-auto max-h-[80vh] object-contain" />
       </div>
     </div>
   );

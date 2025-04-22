@@ -22,8 +22,34 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
   const [loadingGroups, setLoadingGroups] = useState<boolean>(true);
+  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
+
+  const uploadGroupImage = async (file: File): Promise<string | null> => {
+    try {
+      setUploadingImage(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('group-images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('group-images')
+        .getPublicUrl(fileName);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const fetchGroups = async () => {
     if (!currentUser) {

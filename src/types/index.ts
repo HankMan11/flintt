@@ -10,10 +10,23 @@ export interface Group {
   id: string;
   name: string;
   imageUrl?: string;
+  icon?: string;
   members: User[];
   createdAt: string;
   description?: string;
   inviteCode?: string;
+}
+
+export interface GroupsContextType {
+  groups: Group[];
+  setGroups: React.Dispatch<React.SetStateAction<Group[]>>;
+  activeGroup: Group | null;
+  setActiveGroup: (group: Group | null) => void;
+  loadingGroups: boolean;
+  setLoadingGroups: React.Dispatch<React.SetStateAction<boolean>>;
+  uploadingImage: boolean;
+  uploadGroupImage: (file: File) => Promise<string | null>;
+  fetchGroups: () => Promise<void>;
 }
 
 export interface Comment {

@@ -1,4 +1,3 @@
-
 import { useApp } from "@/contexts/AppContext";
 import { Group } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -53,21 +52,21 @@ export function GroupSidebar() {
 
   const handleCreateGroup = async () => {
     if (newGroupName.trim() === "") return;
-    
+
     setIsCreating(true);
-    
+
     try {
       // For demo purposes, if no icon provided, use a random one
       const icon = newGroupIcon || `https://source.unsplash.com/random/100x100/?${newGroupName.toLowerCase()}`;
-      
+
       const newGroup = await createGroup(newGroupName, icon, newGroupDescription);
-      
+
       if (newGroup) {
         toast({
           title: "Group Created",
           description: `You've successfully created ${newGroupName}`,
         });
-        
+
         setNewGroupName("");
         setNewGroupIcon("");
         setNewGroupDescription("");
@@ -93,19 +92,19 @@ export function GroupSidebar() {
 
   const handleJoinGroup = async () => {
     if (inviteCode.trim() === "") return;
-    
+
     setIsJoining(true);
     setJoinError("");
-    
+
     try {
       const success = await joinGroup(inviteCode);
-      
+
       if (success) {
         toast({
           title: "Group Joined",
           description: "You've successfully joined the group",
         });
-        
+
         setInviteCode("");
         setIsJoinOpen(false);
       } else {
@@ -292,7 +291,7 @@ function GroupItem({ group, isActive, onClick }: GroupItemProps) {
       onClick={onClick}
     >
       <img
-        src={group.icon}
+        src={group.imageUrl || group.icon}
         alt={group.name}
         className="h-10 w-10 rounded-full object-cover"
       />

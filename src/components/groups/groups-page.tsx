@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,25 +9,45 @@ import { Plus, Search, UserPlus, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
+// Placeholder for Supabase client - REPLACE WITH YOUR ACTUAL INSTANCE
+const supabase = {
+  storage: {
+    from: (bucket: string) => ({
+      upload: async (path: string, file: File, options: any) => {
+        // Simulate upload - REPLACE WITH ACTUAL SUPABASE UPLOAD
+        console.log("Simulating upload:", path, file, options);
+        return { data: {}, error: null };
+      },
+      getPublicUrl: async (path: string) => {
+        // Simulate getting public URL - REPLACE WITH ACTUAL SUPABASE FUNCTION
+        console.log("Simulating getPublicUrl:", path);
+        return { data: { publicUrl: "https://example.com/image.jpg" } };
+      }
+    })
+  }
+};
+
+
 export function GroupsPage() {
   const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, fetchGroups } = useApp();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const [newGroupName, setNewGroupName] = useState("");
-  const [newGroupIcon, setNewGroupIcon] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
-  const { toast } = useToast();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { toast } = useToast();
   const navigate = useNavigate();
 
-  // Load groups on component mount
   useEffect(() => {
     if (!loadingGroups) {
       fetchGroups();
@@ -55,39 +74,63 @@ export function GroupsPage() {
     }
   };
 
+  const handleImageUpload = async () => {
+    if (!selectedFile) return null;
+    setUploading(true);
+    const ext = selectedFile.name.split(".").pop();
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const path = `groups/${filename}`;
+
+    const { data, error } = await supabase.storage.from("uploads").upload(path, selectedFile, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+
+    setUploading(false);
+    if (error) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+      return null;
+    }
+
+    const { data: urlData } = await supabase.storage.from("uploads").getPublicUrl(path);
+    return urlData?.publicUrl ?? null;
+  };
+
   const handleCreateGroup = async () => {
-    if (newGroupName.trim() === "") return;
-    
-    setIsCreating(true);
-    
-    try {
-      // For demo purposes, if no icon provided, use a random one
-      const icon = newGroupIcon || `https://source.unsplash.com/random/100x100/?${newGroupName.toLowerCase()}`;
-      
-      const newGroup = await createGroup(newGroupName, icon, newGroupDescription);
-      
-      if (newGroup) {
-        toast({
-          title: "Group Created",
-          description: `You've successfully created ${newGroupName}`,
-        });
-        
-        setNewGroupName("");
-        setNewGroupIcon("");
-        setNewGroupDescription("");
-        setIsCreateOpen(false);
-      } else {
-        toast({
-          title: "Error",
-          description: "Failed to create group. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error creating group:", error);
+    if (!newGroupName.trim()) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred",
+        description: "Please enter a group name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      let imageUrl = null;
+      if (selectedFile) {
+        imageUrl = await handleImageUpload();
+      }
+
+      await createGroup(newGroupName, imageUrl, newGroupDescription);
+      setNewGroupName("");
+      setNewGroupDescription("");
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      setIsCreateOpen(false);
+      toast({
+        title: "Success",
+        description: "Group created successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to create group",
         variant: "destructive",
       });
     } finally {
@@ -97,25 +140,25 @@ export function GroupsPage() {
 
   const handleJoinGroup = async () => {
     if (inviteCode.trim() === "") return;
-    
+
     setIsJoining(true);
     setJoinError("");
-    
+
     try {
       const success = await joinGroup(inviteCode);
-      
+
       if (success) {
         toast({
           title: "Group Joined",
           description: "You've successfully joined the group",
         });
-        
+
         setInviteCode("");
         setIsJoinOpen(false);
       } else {
         setJoinError("Invalid invite code. Please try again.");
         toast({
-          title: "Error", 
+          title: "Error",
           description: "Failed to join group. Invalid invite code.",
           variant: "destructive",
         });
@@ -133,7 +176,7 @@ export function GroupsPage() {
     }
   };
 
-  const filteredGroups = groups.filter(group => 
+  const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     group.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -175,12 +218,14 @@ export function GroupsPage() {
                     onChange={(e) => setNewGroupName(e.target.value)}
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="icon">Group Icon URL (optional)</Label>
+                <div className="space-y-2">
+                  <Label htmlFor="group-image">Group Image</Label>
                   <Input
-                    id="icon"
-                    value={newGroupIcon}
-                    onChange={(e) => setNewGroupIcon(e.target.value)}
+                    id="group-image"
+                    type="file"
+                    ref={fileInputRef}
+                    accept="image/*"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
                   />
                 </div>
                 <div className="grid gap-2">

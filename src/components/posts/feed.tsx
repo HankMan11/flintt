@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 
 export function Feed() {
   const { activeGroup, filterGroupPosts, currentUser } = useApp();
+  const navigate = useNavigate();
   const [inviteCode, setInviteCode] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<PostFilters>({
@@ -54,7 +55,6 @@ export function Feed() {
     });
   }, [allPosts, searchQuery, filters, currentUser]);
 
-  const navigate = useNavigate();
   const isWeekEnd = new Date().getDay() === 0; // Sunday
 
   if (!activeGroup) {

@@ -10,6 +10,18 @@ import { formatDistanceToNow } from 'date-fns';
 export function NotificationsDrawer() {
   const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
 
+  useEffect(() => {
+    const handleNotificationClick = async (notification) => {
+      if (!notification.is_read) {
+        await markAsRead(notification.id);
+      }
+    };
+
+    return () => {
+      // Cleanup if needed
+    };
+  }, [markAsRead]);
+
   return (
     <Sheet>
       <SheetTrigger asChild>

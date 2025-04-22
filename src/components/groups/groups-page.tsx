@@ -42,6 +42,7 @@ export function GroupsPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [groupImage, setGroupImage] = useState<string | null>(null); //Added state for image preview
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -121,6 +122,7 @@ export function GroupsPage() {
       setNewGroupName("");
       setNewGroupDescription("");
       setSelectedFile(null);
+      setGroupImage(null); //Clear image preview
       if (fileInputRef.current) fileInputRef.current.value = "";
       setIsCreateOpen(false);
       toast({
@@ -225,9 +227,28 @@ export function GroupsPage() {
                     type="file"
                     ref={fileInputRef}
                     accept="image/*"
-                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      setSelectedFile(e.target.files?.[0] || null);
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setGroupImage(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
                   />
                 </div>
+                {groupImage && (
+                  <div className="mt-2">
+                    <img
+                      src={groupImage}
+                      alt="Group preview"
+                      className="w-20 h-20 rounded-full object-cover"
+                    />
+                  </div>
+                )}
                 <div className="grid gap-2">
                   <Label htmlFor="description">Description (optional)</Label>
                   <Input

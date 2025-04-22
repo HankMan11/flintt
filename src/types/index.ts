@@ -11,6 +11,7 @@ export interface Group {
   name: string;
   imageUrl?: string;
   icon?: string;
+  imageUrl?: string;
   members: User[];
   createdAt: string;
   description?: string;

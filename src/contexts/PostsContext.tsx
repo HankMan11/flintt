@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Post } from "@/types";
 import { useAuth } from "./AuthContext";
@@ -28,78 +28,11 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
   const [posts, setPosts] = useState<Post[]>([]);
   const [userActivity, setUserActivity] = useState<Record<string, UserActivity>>({});
 
-  // Fetch posts for active group
-  const fetchPosts = async (groupId: string) => {
-    if (!groupId) return;
-
-    try {
-      const { data: postsData, error } = await supabase
-        .from('posts')
-        .select(`
-          *,
-          user:profiles(*)
-        `)
-        .eq('group_id', groupId)
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      if (postsData) {
-        const formattedPosts = postsData.map(post => ({
-          id: post.id,
-          user: {
-            id: post.user.id,
-            name: post.user.username || 'Anonymous',
-            username: post.user.username || 'anonymous',
-            avatar: post.user.avatar_url
-          },
-          group: activeGroup!,
-          caption: post.caption,
-          mediaUrl: post.media_url,
-          mediaType: post.media_type,
-          createdAt: post.created_at,
-          likes: post.likes || [],
-          dislikes: post.dislikes || [],
-          hearts: post.hearts || [],
-          comments: post.comments || []
-        }));
-        setPosts(formattedPosts);
-      }
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-    }
-  };
-
-  // Subscribe to post changes
-  useEffect(() => {
-    if (!activeGroup?.id) return;
-
-    // Initial fetch
-    fetchPosts(activeGroup.id);
-
-    // Subscribe to changes
-    const subscription = supabase
-      .channel(`posts_${activeGroup.id}`)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'posts',
-        filter: `group_id=eq.${activeGroup.id}`
-      }, () => {
-        fetchPosts(activeGroup.id);
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [activeGroup?.id]);
-
   // Update user activity and streak
   const updateUserActivity = (userId: string) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
+    
     setUserActivity(prev => {
       const userStats = prev[userId];
       if (!userStats) {
@@ -108,7 +41,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
       const lastActive = new Date(userStats.lastActive);
       const daysDiff = Math.floor((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
-
+      
       let newStreak = userStats.streak;
       if (daysDiff === 1) {
         newStreak += 1;
@@ -135,16 +68,33 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       hearts: [],
     };
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("posts")
-      .insert(newPost);
+      .insert(newPost)
+      .select()
+      .single();
 
     if (error) {
       console.error("Error saving post:", error);
       return;
     }
 
-    // Posts will be automatically updated via subscription
+    if (activeGroup) {
+      const postObj: Post = {
+        id: data.id,
+        user: currentUser,
+        group: activeGroup,
+        caption: data.caption || undefined,
+        mediaUrl: data.media_url,
+        mediaType: data.media_type === "video" ? "video" : "image",
+        createdAt: data.created_at,
+        likes: data.likes ?? [],
+        dislikes: data.dislikes ?? [],
+        hearts: data.hearts ?? [],
+        comments: [],
+      };
+      setPosts(p => [postObj, ...p]);
+    }
   };
 
   const deletePost = (postId: string) => {

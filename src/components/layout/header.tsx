@@ -2,7 +2,6 @@ import { Bell, Home, LogOut, Settings, User, BarChart } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
   DropdownMenu,
@@ -68,23 +67,17 @@ export function Header() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="relative"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-primary text-[10px] font-medium text-primary-foreground flex items-center justify-center">
-                    {unreadCount}
-                  </span>
-                )}
-              </Button>
-            </SheetTrigger>
-            <NotificationsDrawer />
-          </Sheet>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="relative"
+            onClick={() => setShowNotifications(true)}
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-primary"></span>
+            )}
+          </Button>
           
           {currentUser ? (
             <DropdownMenu>

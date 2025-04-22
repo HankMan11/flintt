@@ -6,16 +6,26 @@ export interface User {
   isAdmin?: boolean;
 }
 
+export type GroupRole = 'admin' | 'member';
+
+export interface GroupMember {
+  id: string;
+  userId: string;
+  groupId: string;
+  role: GroupRole;
+  user: User;
+}
+
 export interface Group {
   id: string;
   name: string;
   imageUrl?: string;
   icon?: string;
-  imageUrl?: string;
-  members: User[];
+  members: GroupMember[];
   createdAt: string;
   description?: string;
   inviteCode?: string;
+  isArchived?: boolean;
 }
 
 export interface GroupsContextType {

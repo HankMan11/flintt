@@ -188,8 +188,8 @@ export function GroupsPage() {
   );
 
   return (
-    <div className="px-4 py-6 md:px-6 lg:px-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="px-4 py-6 md:px-6 lg:px-8 flex flex-col h-[calc(100vh-4rem)]">
+      <div className="mb-6 flex items-center justify-between sticky top-0 bg-background z-10 py-4">
         <div>
           <h2 className="text-2xl font-bold">My Groups</h2>
           <p className="text-muted-foreground">View and manage your groups</p>
@@ -327,7 +327,7 @@ export function GroupsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 overflow-y-auto">
           {filteredGroups.map(group => (
             <Card key={group.id} className="overflow-hidden">
               <div className="aspect-video w-full overflow-hidden">

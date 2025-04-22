@@ -101,6 +101,22 @@ export interface Post {
   comments: Comment[];
 }
 
+export interface Report {
+  id: string;
+  reporterId: string;
+  reportedUserId: string;
+  reportedPostId?: string;
+  reason: string;
+  status: 'pending' | 'resolved' | 'dismissed';
+  createdAt: string;
+}
+
+export interface BlockedUser {
+  userId: string;
+  blockedUserId: string;
+  createdAt: string;
+}
+
 export interface Stats {
   mostUploads: {
     user: User;

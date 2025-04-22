@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Heart, MessageCircle, ThumbsDown, ThumbsUp, MoreVertical, Flag, Ban } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { Post } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,6 +8,8 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { CommentList } from "./comment-list";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
+
 
 interface PostCardProps {
   post: Post;
@@ -19,6 +21,13 @@ export function PostCard({ post }: PostCardProps) {
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false); // Added state for image modal
+  const [reportDialogOpen, setReportDialogOpen] = useState(false); // Added state for report dialog
+
+  const handleBlock = () => {
+    //Implementation for blocking user
+    console.log("Block user functionality not implemented yet");
+  };
+
 
   if (!post || !post.user) {
     return null; // Safely handle invalid posts
@@ -56,11 +65,28 @@ export function PostCard({ post }: PostCardProps) {
           <AvatarFallback>{post.user.name.charAt(0)}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium">{post.user.name}</p>
-              <p className="text-xs text-muted-foreground">
-                {(() => {
+          <div className="flex items-center justify-between w-full">
+            <p className="text-sm font-medium">{post.user.name}</p>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => setReportDialogOpen(true)}>
+                  <Flag className="h-4 w-4 mr-2" />
+                  Report Post
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleBlock}>
+                  <Ban className="h-4 w-4 mr-2" />
+                  Block User
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {(() => {
   const now = new Date();
   const createdAt = new Date(post.createdAt);
   const diffInSeconds = Math.floor((now.getTime() - createdAt.getTime()) / 1000);
@@ -70,9 +96,7 @@ export function PostCard({ post }: PostCardProps) {
   }
   return formatDistanceToNow(createdAt, { addSuffix: true });
 })()}
-              </p>
-            </div>
-          </div>
+          </p>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -206,4 +230,26 @@ function ImageModal({ imageUrl, isOpen, onClose }: { imageUrl: string; isOpen: b
       </div>
     </div>
   );
+}
+
+function ReactionsSummary({ post }: { post: Post }) {
+  return (
+    <div className="flex items-center space-x-2 text-sm">
+      {post.likes.length > 0 && (
+        <p>
+          <span className="font-medium">{post.likes.length}</span> likes
+        </p>
+      )}
+      {post.dislikes.length > 0 && (
+        <p>
+          <span className="font-medium">{post.dislikes.length}</span> dislikes
+        </p>
+      )}
+      {post.hearts.length > 0 && (
+        <p>
+          <span className="font-medium">{post.hearts.length}</span> hearts
+        </p>
+      )}
+    </div>
+  )
 }

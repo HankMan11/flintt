@@ -42,7 +42,7 @@ export const useApp = () => {
       return posts.posts.filter(post => post.hearts.includes(auth.currentUser!.id));
     },
     
-    getGroupStats: (groupId: string) => {
+    getGroupStats: (groupId: string, timeRange?: 'all' | 'month' | 'week') => {
       const groupPosts = posts.posts.filter(post => post.group?.id === groupId);
       
       const userPostCounts: Record<string, number> = {};
@@ -121,7 +121,7 @@ export const useApp = () => {
       };
     },
     
-    getUserStats: (userId: string, groupId: string) => {
+    getUserStats: (userId: string, groupId: string, timeRange?: 'all' | 'month' | 'week') => {
       const groupPosts = posts.posts.filter(post => post.group?.id === groupId);
       
       let uploads = 0;

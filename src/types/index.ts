@@ -26,33 +26,6 @@ export interface Group {
   description?: string;
   inviteCode?: string;
   isArchived?: boolean;
-  pinnedPosts?: string[];
-  weeklyStats?: {
-    lastReset: string;
-    topPosters: { userId: string; count: number }[];
-    topReactors: { userId: string; count: number }[];
-    topLiked: { userId: string; count: number }[];
-  };
-}
-
-export interface GroupRole {
-  type: 'admin' | 'member';
-  permissions: {
-    canManageSettings: boolean;
-    canManageMembers: boolean;
-    canPinPosts: boolean;
-    canPost: boolean;
-    canReact: boolean;
-    canComment: boolean;
-  };
-}
-
-export interface UserStats {
-  streak: number;
-  lastActive: string;
-  totalPosts: number;
-  totalReactions: number;
-  totalComments: number;
 }
 
 export interface GroupsContextType {
@@ -99,22 +72,6 @@ export interface Post {
   dislikes: string[];
   hearts: string[];
   comments: Comment[];
-}
-
-export interface Report {
-  id: string;
-  reporterId: string;
-  reportedUserId: string;
-  reportedPostId?: string;
-  reason: string;
-  status: 'pending' | 'resolved' | 'dismissed';
-  createdAt: string;
-}
-
-export interface BlockedUser {
-  userId: string;
-  blockedUserId: string;
-  createdAt: string;
 }
 
 export interface Stats {

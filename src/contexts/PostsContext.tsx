@@ -17,41 +17,10 @@ interface PostsContextType {
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
 
-interface UserActivity {
-  lastActive: Date;
-  streak: number;
-}
-
 export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { currentUser } = useAuth();
   const { activeGroup } = useGroups();
   const [posts, setPosts] = useState<Post[]>([]);
-  const [userActivity, setUserActivity] = useState<Record<string, UserActivity>>({});
-
-  // Update user activity and streak
-  const updateUserActivity = (userId: string) => {
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    setUserActivity(prev => {
-      const userStats = prev[userId];
-      if (!userStats) {
-        return { ...prev, [userId]: { lastActive: today, streak: 1 } };
-      }
-
-      const lastActive = new Date(userStats.lastActive);
-      const daysDiff = Math.floor((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
-      
-      let newStreak = userStats.streak;
-      if (daysDiff === 1) {
-        newStreak += 1;
-      } else if (daysDiff > 1) {
-        newStreak = 1;
-      }
-
-      return { ...prev, [userId]: { lastActive: today, streak: newStreak } };
-    });
-  };
 
   const addPost = async (groupId: string, caption: string, mediaUrl: string, mediaType: "image" | "video") => {
     if (!currentUser) return;

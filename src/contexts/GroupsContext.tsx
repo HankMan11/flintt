@@ -51,40 +51,6 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
     }
   };
 
-  const calculateWeeklyStats = (groupId: string) => {
-    const now = new Date();
-    const weekStart = new Date(now.setDate(now.getDate() - now.getDay()));
-    
-    // Get all posts from this week
-    const weekPosts = posts.filter(post => 
-      post.groupId === groupId && 
-      new Date(post.createdAt) >= weekStart
-    );
-
-    const stats = {
-      lastReset: weekStart.toISOString(),
-      topPosters: {},
-      topReactors: {},
-      topLiked: {}
-    };
-
-    weekPosts.forEach(post => {
-      // Count posts
-      stats.topPosters[post.userId] = (stats.topPosters[post.userId] || 0) + 1;
-      
-      // Count reactions received
-      const reactionCount = post.likes.length + post.hearts.length + post.dislikes.length;
-      stats.topLiked[post.userId] = (stats.topLiked[post.userId] || 0) + reactionCount;
-      
-      // Count reactions given
-      [...post.likes, ...post.hearts, ...post.dislikes].forEach(reactorId => {
-        stats.topReactors[reactorId] = (stats.topReactors[reactorId] || 0) + 1;
-      });
-    });
-
-    return stats;
-  };
-
   const fetchGroups = async () => {
     if (!currentUser) {
       setGroups([]);

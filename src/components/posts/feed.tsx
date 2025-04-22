@@ -28,8 +28,7 @@ export function Feed() {
 
   // Filter posts based on search and filters
   const filteredPosts = useMemo(() => {
-    let filtered = allPosts.filter(post => {
-      if (!post) return false;
+    return allPosts.filter(post => {
       // Skip filtering if post is undefined
       if (!post) return false;
 
@@ -147,15 +146,7 @@ export function Feed() {
           </CardHeader>
         </Card>
       ) : (
-        <div className="space-y-6 overflow-y-auto h-[calc(100vh-16rem)] px-1 pb-20">
-          {pinnedPosts.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-4">📌 Pinned Posts</h3>
-              {pinnedPosts.map((post) => (
-                <PostCard key={post.id} post={post} isPinned />
-              ))}
-            </div>
-          )}
+        <div className="space-y-6 overflow-y-auto h-[calc(100vh-16rem)] px-1">
           {filteredPosts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}

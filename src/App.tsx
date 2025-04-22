@@ -29,8 +29,9 @@ const LoadingFallback = () => (
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Suspense fallback={<LoadingFallback />}>
+      <AppProvider>
+        <TooltipProvider>
+          <Suspense fallback={<LoadingFallback />}>
           <Toaster />
           <Sonner />
           <BrowserRouter>
@@ -41,7 +42,8 @@ const App = () => {
             </Routes>
           </BrowserRouter>
         </Suspense>
-      </TooltipProvider>
+        </TooltipProvider>
+      </AppProvider>
     </QueryClientProvider>
   );
 };

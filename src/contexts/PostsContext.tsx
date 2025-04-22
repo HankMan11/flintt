@@ -28,6 +28,73 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
   const [posts, setPosts] = useState<Post[]>([]);
   const [userActivity, setUserActivity] = useState<Record<string, UserActivity>>({});
 
+  // Fetch posts for active group
+  const fetchPosts = async (groupId: string) => {
+    if (!groupId) return;
+
+    try {
+      const { data: postsData, error } = await supabase
+        .from('posts')
+        .select(`
+          *,
+          user:profiles(*)
+        `)
+        .eq('group_id', groupId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      if (postsData) {
+        const formattedPosts = postsData.map(post => ({
+          id: post.id,
+          user: {
+            id: post.user.id,
+            name: post.user.username || 'Anonymous',
+            username: post.user.username || 'anonymous',
+            avatar: post.user.avatar_url
+          },
+          group: activeGroup!,
+          caption: post.caption,
+          mediaUrl: post.media_url,
+          mediaType: post.media_type,
+          createdAt: post.created_at,
+          likes: post.likes || [],
+          dislikes: post.dislikes || [],
+          hearts: post.hearts || [],
+          comments: post.comments || []
+        }));
+        setPosts(formattedPosts);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+    }
+  };
+
+  // Subscribe to post changes
+  useEffect(() => {
+    if (!activeGroup?.id) return;
+
+    // Initial fetch
+    fetchPosts(activeGroup.id);
+
+    // Subscribe to changes
+    const subscription = supabase
+      .channel(`posts_${activeGroup.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'posts',
+        filter: `group_id=eq.${activeGroup.id}`
+      }, () => {
+        fetchPosts(activeGroup.id);
+      })
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [activeGroup?.id]);
+
   // Update user activity and streak
   const updateUserActivity = (userId: string) => {
     const now = new Date();
@@ -68,33 +135,16 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       hearts: [],
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from("posts")
-      .insert(newPost)
-      .select()
-      .single();
+      .insert(newPost);
 
     if (error) {
       console.error("Error saving post:", error);
       return;
     }
 
-    if (activeGroup) {
-      const postObj: Post = {
-        id: data.id,
-        user: currentUser,
-        group: activeGroup,
-        caption: data.caption || undefined,
-        mediaUrl: data.media_url,
-        mediaType: data.media_type === "video" ? "video" : "image",
-        createdAt: data.created_at,
-        likes: data.likes ?? [],
-        dislikes: data.dislikes ?? [],
-        hearts: data.hearts ?? [],
-        comments: [],
-      };
-      setPosts(p => [postObj, ...p]);
-    }
+    // Posts will be automatically updated via subscription
   };
 
   const deletePost = (postId: string) => {

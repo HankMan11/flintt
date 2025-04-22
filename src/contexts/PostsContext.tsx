@@ -99,7 +99,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
   const updateUserActivity = (userId: string) => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
+
     setUserActivity(prev => {
       const userStats = prev[userId];
       if (!userStats) {
@@ -108,7 +108,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
 
       const lastActive = new Date(userStats.lastActive);
       const daysDiff = Math.floor((today.getTime() - lastActive.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       let newStreak = userStats.streak;
       if (daysDiff === 1) {
         newStreak += 1;

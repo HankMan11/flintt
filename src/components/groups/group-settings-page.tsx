@@ -1,231 +1,175 @@
-
-import React, { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useToast } from "@/hooks/use-toast";
-import { useGroups } from "@/contexts/GroupsContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
+import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Loader2, Plus, Copy, Archive, Trash2, UserMinus, Settings, Users } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export function GroupSettingsPage() {
-  const { activeGroup, updateGroup, deleteGroup, removeGroupMember } = useGroups();
-  const { currentUser } = useAuth();
-  const navigate = useNavigate();
-  const [uploading, setUploading] = useState(false);
-  const [groupSettings, setGroupSettings] = useState({
-    name: activeGroup?.name || "",
-    description: activeGroup?.description || "",
-    isPrivate: activeGroup?.isPrivate || false,
-    allowInvites: activeGroup?.allowInvites || true,
+  const { activeGroup, updateGroup, currentUser } = useApp();
+  const [groupName, setGroupName] = useState(activeGroup?.name || "");
+  const [description, setDescription] = useState(activeGroup?.description || "");
+  const [settings, setSettings] = useState({
+    allowInvites: true,
+    requireApproval: false,
+    enableNotifications: true,
+    allowComments: true,
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
-  const isAdmin = activeGroup?.members.find(
-    m => m.userId === currentUser?.id && m.role === 'admin'
-  );
+  const [selectedMember, setSelectedMember] = useState("");
+  const [memberRole, setMemberRole] = useState("member");
 
-  if (!activeGroup) {
-    return (
-      <Card className="m-6 p-6 text-center">
-        <CardHeader>
-          <CardTitle>No Active Group</CardTitle>
-          <CardDescription>Please select a group to view its settings.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => navigate("/groups")}>Back to Groups</Button>
-        </CardContent>
-      </Card>
-    );
+  if (!activeGroup || !currentUser) {
+    return <div>Loading...</div>;
   }
 
-  if (!isAdmin) {
-    return (
-      <Card className="m-6 p-6 text-center">
-        <CardHeader>
-          <CardTitle>Access Denied</CardTitle>
-          <CardDescription>Only group admins can access settings.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button onClick={() => navigate("/groups")}>Back to Groups</Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  const isAdmin = activeGroup.admins?.includes(currentUser.id);
 
-  const handleUpdateSettings = async () => {
-    try {
-      await updateGroup(activeGroup.id, groupSettings);
-      toast({
-        title: "Success",
-        description: "Group settings updated successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update group settings",
-        variant: "destructive",
-      });
-    }
+  const handleSave = async () => {
+    await updateGroup(activeGroup.id, {
+      name: groupName,
+      description,
+      settings,
+    });
   };
 
-  const handleDeleteGroup = async () => {
-    if (window.confirm("Are you sure you want to delete this group? This action cannot be undone.")) {
-      try {
-        await deleteGroup(activeGroup.id);
-        navigate("/groups");
-        toast({
-          title: "Success",
-          description: "Group deleted successfully",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to delete group",
-          variant: "destructive",
-        });
-      }
-    }
+  const handleRoleChange = async (userId: string, newRole: string) => {
+    const updatedAdmins = newRole === 'admin' 
+      ? [...activeGroup.admins, userId]
+      : activeGroup.admins.filter(id => id !== userId);
+
+    await updateGroup(activeGroup.id, {
+      admins: updatedAdmins,
+    });
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4">
+    <div className="container mx-auto p-6">
       <Tabs defaultValue="general">
-        <TabsList className="mb-6">
+        <TabsList className="w-full">
           <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="permissions">Permissions</TabsTrigger>
+          <TabsTrigger value="privacy">Privacy</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="general">
+        <TabsContent value="general" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
               <CardTitle>General Settings</CardTitle>
-              <CardDescription>Update your group's basic information</CardDescription>
+              <CardDescription>
+                Manage your group's basic information
+              </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div>
-                  <Label>Group Name</Label>
-                  <Input
-                    value={groupSettings.name}
-                    onChange={(e) => setGroupSettings({ ...groupSettings, name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Description</Label>
-                  <Textarea
-                    value={groupSettings.description}
-                    onChange={(e) => setGroupSettings({ ...groupSettings, description: e.target.value })}
-                  />
-                </div>
-                <Button onClick={handleUpdateSettings}>Save Changes</Button>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Group Name</Label>
+                <Input
+                  id="name"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  disabled={!isAdmin}
+                />
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  disabled={!isAdmin}
+                />
+              </div>
+              <Button onClick={handleSave} disabled={!isAdmin}>
+                Save Changes
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="members">
+        <TabsContent value="members" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Manage Members</CardTitle>
-              <CardDescription>View and manage group members</CardDescription>
+              <CardTitle>Member Management</CardTitle>
+              <CardDescription>
+                Manage roles and permissions for group members
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {activeGroup.members.map((member) => (
-                  <div key={member.userId} className="flex items-center justify-between p-2 border rounded">
-                    <div className="flex items-center gap-3">
-                      <img
-                        src={member.avatar}
-                        alt={member.name}
-                        className="w-10 h-10 rounded-full"
-                      />
-                      <div>
-                        <p className="font-medium">{member.name}</p>
-                        <p className="text-sm text-muted-foreground">{member.role}</p>
-                      </div>
-                    </div>
-                    {member.userId !== currentUser?.id && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeGroupMember(activeGroup.id, member.userId)}
-                      >
-                        <UserMinus className="w-4 h-4 mr-2" />
-                        Remove
-                      </Button>
-                    )}
+            <CardContent className="space-y-4">
+              {activeGroup.members.map((member) => (
+                <div key={member.id} className="flex items-center justify-between p-2">
+                  <div className="flex items-center gap-2">
+                    <Avatar>
+                      <AvatarImage src={member.avatar} />
+                      <AvatarFallback>{member.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <span>{member.name}</span>
                   </div>
-                ))}
-              </div>
+                  <Select
+                    disabled={!isAdmin || member.id === currentUser.id}
+                    value={activeGroup.admins.includes(member.id) ? 'admin' : 'member'}
+                    onValueChange={(value) => handleRoleChange(member.id, value)}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="member">Member</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="permissions">
+        <TabsContent value="privacy" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Group Permissions</CardTitle>
-              <CardDescription>Configure group privacy and permissions</CardDescription>
+              <CardTitle>Privacy Settings</CardTitle>
+              <CardDescription>
+                Control your group's privacy and interaction settings
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Private Group</p>
-                    <p className="text-sm text-muted-foreground">
-                      Only invited members can join
-                    </p>
-                  </div>
-                  <Switch
-                    checked={groupSettings.isPrivate}
-                    onCheckedChange={(checked) =>
-                      setGroupSettings({ ...groupSettings, isPrivate: checked })
-                    }
-                  />
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Allow Invites</p>
+                  <p className="text-sm text-muted-foreground">
+                    Let members invite others to join
+                  </p>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">Allow Member Invites</p>
-                    <p className="text-sm text-muted-foreground">
-                      Let members invite others
-                    </p>
-                  </div>
-                  <Switch
-                    checked={groupSettings.allowInvites}
-                    onCheckedChange={(checked) =>
-                      setGroupSettings({ ...groupSettings, allowInvites: checked })
-                    }
-                  />
+                <Switch
+                  checked={settings.allowInvites}
+                  onCheckedChange={(checked) => 
+                    setSettings(s => ({ ...s, allowInvites: checked }))}
+                  disabled={!isAdmin}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">Require Approval</p>
+                  <p className="text-sm text-muted-foreground">
+                    Admins must approve new members
+                  </p>
                 </div>
+                <Switch
+                  checked={settings.requireApproval}
+                  onCheckedChange={(checked) => 
+                    setSettings(s => ({ ...s, requireApproval: checked }))}
+                  disabled={!isAdmin}
+                />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
-
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-destructive">Danger Zone</CardTitle>
-          <CardDescription>Irreversible actions for this group</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button variant="destructive" onClick={handleDeleteGroup}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete Group
-          </Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }

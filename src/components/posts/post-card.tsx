@@ -97,7 +97,8 @@ export function PostCard({ post }: PostCardProps) {
         )}
       </CardContent>
       <CardFooter className="flex flex-col items-start p-4">
-        <div className="flex w-full items-center justify-between">
+        <ReactionsSummary post={post} />
+        <div className="flex w-full items-center justify-between mt-2">
           <div className="flex space-x-4">
             <Button
               variant="ghost"

@@ -8,7 +8,9 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { CommentList } from "./comment-list";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@radix-ui/react-dropdown-menu';
+import { ReportDialog } from "./report-dialog";
+import { useToast } from "@/components/ui/use-toast";
 
 
 interface PostCardProps {
@@ -22,6 +24,7 @@ export function PostCard({ post }: PostCardProps) {
   const [showComments, setShowComments] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false); // Added state for image modal
   const [reportDialogOpen, setReportDialogOpen] = useState(false); // Added state for report dialog
+  const toast = useToast();
 
   const handleBlock = () => {
     //Implementation for blocking user
@@ -56,6 +59,17 @@ export function PostCard({ post }: PostCardProps) {
   const isLiked = currentUser && post.likes.includes(currentUser.id);
   const isDisliked = currentUser && post.dislikes.includes(currentUser.id);
   const isHearted = currentUser && post.hearts.includes(currentUser.id);
+
+  const handleReportClose = () => {
+    setReportDialogOpen(false);
+  };
+
+  const handleReportSubmit = (reason: string) => {
+    // Handle report submission
+    console.log("Report submitted:", reason);
+    toast({ title: 'Report Submitted', description: 'Thank you for your report.', })
+    setReportDialogOpen(false);
+  };
 
   return (
     <Card className="mb-6 overflow-hidden">
@@ -200,6 +214,7 @@ export function PostCard({ post }: PostCardProps) {
         isOpen={imageModalOpen}
         onClose={() => setImageModalOpen(false)}
       />
+      <ReportDialog isOpen={reportDialogOpen} onClose={handleReportClose} onSubmit={handleReportSubmit} />
     </Card>
   );
 }

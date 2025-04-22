@@ -64,10 +64,8 @@ export function PostCard({ post }: PostCardProps) {
     setReportDialogOpen(false);
   };
 
-  const handleReportSubmit = (reason: string) => {
-    // Handle report submission
-    console.log("Report submitted:", reason);
-    toast({ title: 'Report Submitted', description: 'Thank you for your report.', })
+  const handleReportSubmit = (reason: string, details: string) => {
+    handleReport(post.id, reason, details);
     setReportDialogOpen(false);
   };
 

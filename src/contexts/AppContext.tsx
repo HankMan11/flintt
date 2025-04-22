@@ -297,3 +297,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     </GroupsProvider>
   </AuthProvider>
 );
+const handleReport = async (postId: string, reason: string, details: string) => {
+    if (!currentUser) return;
+    
+    try {
+      const { error } = await supabase
+        .from('reports')
+        .insert({
+          reporter_id: currentUser.id,
+          reported_post_id: postId,
+          reason: reason,
+          details: details,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+
+      if (error) throw error;
+      
+      toast({
+        title: "Report Submitted",
+        description: "Thank you for helping keep our community safe."
+      });
+    } catch (error) {
+      console.error('Error submitting report:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit report. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };

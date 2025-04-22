@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Heart, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
@@ -19,6 +18,7 @@ export function PostCard({ post }: PostCardProps) {
   const [isCommenting, setIsCommenting] = useState(false);
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
+  const [imageModalOpen, setImageModalOpen] = useState(false); // Added state for image modal
 
   if (!post || !post.user) {
     return null; // Safely handle invalid posts
@@ -64,7 +64,7 @@ export function PostCard({ post }: PostCardProps) {
   const now = new Date();
   const createdAt = new Date(post.createdAt);
   const diffInSeconds = Math.floor((now.getTime() - createdAt.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) {
     return "Just now";
   }
@@ -77,15 +77,16 @@ export function PostCard({ post }: PostCardProps) {
       </CardHeader>
       <CardContent className="p-0">
         {post.mediaType === "image" ? (
-          <img 
-            src={post.mediaUrl} 
-            alt={post.caption || "Post image"} 
-            className="aspect-video w-full object-cover"
+          <img
+            src={post.mediaUrl}
+            alt={post.caption || "Post image"}
+            className="aspect-video w-full object-cover cursor-pointer"
+            onClick={() => setImageModalOpen(true)} // Added onClick handler
           />
         ) : (
-          <video 
-            src={post.mediaUrl} 
-            controls 
+          <video
+            src={post.mediaUrl}
+            controls
             className="aspect-video w-full object-cover"
           />
         )}
@@ -169,6 +170,30 @@ export function PostCard({ post }: PostCardProps) {
           </Button>
         )}
       </CardFooter>
+      <ImageModal // Added ImageModal component
+        imageUrl={post.mediaType === "image" ? post.mediaUrl : ""}
+        isOpen={imageModalOpen}
+        onClose={() => setImageModalOpen(false)}
+      />
     </Card>
+  );
+}
+
+
+function ImageModal({ imageUrl, isOpen, onClose }: { imageUrl: string; isOpen: boolean; onClose: () => void }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center">
+      <div className="relative w-full max-w-2xl bg-white rounded-lg shadow-lg">
+        <button
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          onClick={onClose}
+        >
+          &times;
+        </button>
+        <img src={imageUrl} alt="Full Image" className="w-full h-auto" />
+      </div>
+    </div>
   );
 }

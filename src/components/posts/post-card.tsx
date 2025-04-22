@@ -93,10 +93,24 @@ export function PostCard({ post }: PostCardProps) {
               open={reportDialogOpen}
               onOpenChange={setReportDialogOpen}
               type="post"
-              onReport={(reason, details) => {
-                // TODO: Implement report functionality
-                console.log("Report:", { reason, details, postId: post.id });
-                alert("Report submitted");
+              onReport={async (reason, details) => {
+                try {
+                  const { error } = await supabase
+                    .from('reports')
+                    .insert({
+                      type: 'post',
+                      reported_id: post.id,
+                      reporter_id: currentUser?.id,
+                      reason,
+                      details
+                    });
+                  
+                  if (error) throw error;
+                  alert("Report submitted successfully");
+                } catch (error) {
+                  console.error("Error submitting report:", error);
+                  alert("Failed to submit report");
+                }
               }}
             />
           </div>

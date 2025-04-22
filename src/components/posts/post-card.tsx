@@ -60,7 +60,16 @@ export function PostCard({ post }: PostCardProps) {
             <div>
               <p className="text-sm font-medium">{post.user.name}</p>
               <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                {(() => {
+  const now = new Date();
+  const createdAt = new Date(post.createdAt);
+  const diffInSeconds = Math.floor((now.getTime() - createdAt.getTime()) / 1000);
+  
+  if (diffInSeconds < 60) {
+    return "Just now";
+  }
+  return formatDistanceToNow(createdAt, { addSuffix: true });
+})()}
               </p>
             </div>
           </div>

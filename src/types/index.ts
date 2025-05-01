@@ -1,3 +1,4 @@
+
 export interface User {
   id: string;
   name: string;
@@ -35,9 +36,9 @@ export interface GroupsContextType {
   setActiveGroup: (group: Group | null) => void;
   loadingGroups: boolean;
   setLoadingGroups: React.Dispatch<React.SetStateAction<boolean>>;
-  uploadingImage: boolean;
-  uploadGroupImage: (file: File) => Promise<string | null>;
   fetchGroups: () => Promise<void>;
+  uploadGroupImage: (file: File) => Promise<string | null>;
+  uploadingImage: boolean;
 }
 
 export interface Comment {
@@ -105,4 +106,15 @@ export interface Stats {
     uploads: number;
     comments: number;
   };
+}
+
+export interface PostsContextType {
+  posts: Post[];
+  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
+  addPost: (groupId: string, caption: string, mediaUrl: string, mediaType: "image" | "video") => Promise<void>;
+  deletePost: (postId: string) => void;
+  likePost: (postId: string) => Promise<void>;
+  dislikePost: (postId: string) => Promise<void>;
+  heartPost: (postId: string) => Promise<void>;
+  addComment: (postId: string, content: string, parentCommentId?: string) => Promise<void>;
 }

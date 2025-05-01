@@ -1,3 +1,4 @@
+
 import { useApp } from "@/contexts/AppContext";
 import { CreatePost } from "./create-post";
 import { PostCard } from "./post-card";
@@ -91,8 +92,8 @@ export function Feed() {
             {activeGroup.members.slice(0, 5).map((member) => (
               <img
                 key={member.id}
-                src={member.avatar}
-                alt={member.name}
+                src={member.user.avatar}
+                alt={member.user.name}
                 className="h-8 w-8 rounded-full border-2 border-background"
               />
             ))}

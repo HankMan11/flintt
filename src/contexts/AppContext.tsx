@@ -1,20 +1,44 @@
+
 import React from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { GroupsProvider, useGroups } from "./GroupsContext";
 import { PostsProvider, usePosts } from "./PostsContext";
 import { supabase } from "@/integrations/supabase/client";
 import { NotificationsProvider } from "./NotificationsContext";
+import { useTheme } from "./ThemeContext";
 
 export const useApp = () => {
   const auth = useAuth();
   const groups = useGroups();
   const posts = usePosts();
+  const { theme, setTheme } = useTheme();
+
+  // Add setDarkMode function that uses the theme context
+  const setDarkMode = (isDark: boolean) => {
+    setTheme(isDark ? "dark" : "light");
+  };
+
+  // Add reactToPost function that uses the posts context
+  const reactToPost = (postId: string, reaction: "like" | "dislike" | "heart") => {
+    if (reaction === "like") {
+      return posts.likePost(postId);
+    } else if (reaction === "dislike") {
+      return posts.dislikePost(postId);
+    } else if (reaction === "heart") {
+      return posts.heartPost(postId);
+    }
+    return Promise.resolve();
+  };
 
   return {
     currentUser: auth.currentUser,
     setCurrentUser: auth.setCurrentUser,
     login: auth.login,
     logout: auth.logout,
+    blockedUsers: auth.blockedUsers,
+    blockUser: auth.blockUser,
+    unblockUser: auth.unblockUser,
+    isUserBlocked: auth.isUserBlocked,
 
     groups: groups.groups,
     setGroups: groups.setGroups,
@@ -23,6 +47,8 @@ export const useApp = () => {
     loadingGroups: groups.loadingGroups,
     setLoadingGroups: groups.setLoadingGroups,
     fetchGroups: groups.fetchGroups,
+    uploadGroupImage: groups.uploadGroupImage,
+    uploadingImage: groups.uploadingImage,
 
     posts: posts.posts,
     setPosts: posts.setPosts,
@@ -32,6 +58,12 @@ export const useApp = () => {
     dislikePost: posts.dislikePost,
     heartPost: posts.heartPost,
     addComment: posts.addComment,
+    reactToPost,
+    
+    // Theme control
+    theme,
+    setTheme,
+    setDarkMode,
 
     filterGroupPosts: (groupId: string) => {
       return posts.posts.filter(post => post.group?.id === groupId);
@@ -76,7 +108,7 @@ export const useApp = () => {
       
       const mostUploads = Object.entries(userPostCounts)
         .map(([userId, count]) => {
-          const user = activeGroup.members.find(member => member.id === userId);
+          const user = activeGroup.members.find(member => member.userId === userId);
           return { user, count };
         })
         .filter(item => item.user)
@@ -85,7 +117,7 @@ export const useApp = () => {
       
       const mostLiked = Object.entries(userLikeCounts)
         .map(([userId, count]) => {
-          const user = activeGroup.members.find(member => member.id === userId);
+          const user = activeGroup.members.find(member => member.userId === userId);
           return { user, count };
         })
         .filter(item => item.user)
@@ -94,7 +126,7 @@ export const useApp = () => {
       
       const mostHearted = Object.entries(userHeartCounts)
         .map(([userId, count]) => {
-          const user = activeGroup.members.find(member => member.id === userId);
+          const user = activeGroup.members.find(member => member.userId === userId);
           return { user, count };
         })
         .filter(item => item.user)
@@ -103,7 +135,7 @@ export const useApp = () => {
       
       const mostCommented = Object.entries(userCommentCounts)
         .map(([userId, count]) => {
-          const user = activeGroup.members.find(member => member.id === userId);
+          const user = activeGroup.members.find(member => member.userId === userId);
           return { user, count };
         })
         .filter(item => item.user)
@@ -162,7 +194,7 @@ export const useApp = () => {
       };
     },
     
-    createGroup: async (name: string, icon: string, description: string = "") => {
+    createGroup: async (name: string, icon: string | null, description: string = "") => {
       if (!auth.currentUser) return null;
       
       try {
@@ -170,12 +202,13 @@ export const useApp = () => {
         
         // Upload image if provided
         let imageUrl = icon;
-        if (icon instanceof File) {
-          const ext = icon.name.split('.').pop();
+        if (icon && typeof icon !== 'string') {
+          const fileObj = icon as unknown as File;
+          const ext = fileObj.name.split('.').pop();
           const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
           const { data: uploadData, error: uploadError } = await supabase.storage
             .from('group-images')
-            .upload(filename, icon);
+            .upload(filename, fileObj);
 
           if (uploadError) {
             console.error("Error uploading image:", uploadError);
@@ -193,7 +226,7 @@ export const useApp = () => {
           .from('groups')
           .insert({
             name,
-            icon: imageUrl,
+            icon: imageUrl || 'https://via.placeholder.com/150',
             description,
             invite_code: inviteCode
           })

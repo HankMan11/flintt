@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
@@ -9,15 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { PostCard } from "../posts/post-card";
-
-function ThemeToggle({ checked, onCheckedChange }) {
-  return (
-    <Switch checked={checked} onCheckedChange={onCheckedChange} />
-  );
-}
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function SettingsPage() {
-  const { currentUser, getSavedPosts, setDarkMode } = useApp(); // Added setDarkMode
+  const { currentUser, getSavedPosts, setDarkMode } = useApp();
   const [profileForm, setProfileForm] = useState({
     name: currentUser?.name || "",
     username: currentUser?.username || "",
@@ -181,10 +177,13 @@ export function SettingsPage() {
                       Switch between light and dark theme
                     </p>
                   </div>
-                  <ThemeToggle checked={preferences.darkMode} onCheckedChange={(checked) => {
-                    setPreferences({ ...preferences, darkMode: checked });
-                    setDarkMode(checked); // Update app context
-                  }} />
+                  <Switch
+                    checked={preferences.darkMode}
+                    onCheckedChange={(checked) => {
+                      setPreferences({ ...preferences, darkMode: checked });
+                      setDarkMode(checked); // This now uses the method from AppContext
+                    }} 
+                  />
                 </div>
               </div>
             </CardContent>

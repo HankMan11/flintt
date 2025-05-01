@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Group } from "@/types";
+import { Group, GroupMember, User } from "@/types";
 import { mockUsers } from "@/data/mockData";
 import { useAuth } from "./AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +14,8 @@ interface GroupsContextType {
   loadingGroups: boolean;
   setLoadingGroups: React.Dispatch<React.SetStateAction<boolean>>;
   fetchGroups: () => Promise<void>;
+  uploadGroupImage: (file: File) => Promise<string | null>;
+  uploadingImage: boolean;
 }
 
 const GroupsContext = createContext<GroupsContextType | undefined>(undefined);
@@ -137,13 +139,23 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
           continue;
         }
 
-        // Convert profiles to the format expected by the application
-        const members = profilesData.map(profile => ({
-          id: profile.id,
-          name: profile.username || 'Anonymous User',
-          username: profile.username || 'anonymous',
-          avatar: profile.avatar_url || 'https://via.placeholder.com/150',
-        }));
+        // Convert profiles to GroupMember objects
+        const members: GroupMember[] = profilesData.map(profile => {
+          const user: User = {
+            id: profile.id,
+            name: profile.username || 'Anonymous User',
+            username: profile.username || 'anonymous',
+            avatar: profile.avatar_url || 'https://via.placeholder.com/150',
+          };
+          
+          return {
+            id: `${group.id}-${profile.id}`, // Create a unique ID for the group membership
+            userId: profile.id,
+            groupId: group.id,
+            role: profile.id === currentUser.id ? 'admin' : 'member', // Assuming creator is admin
+            user: user
+          };
+        });
 
         fetchedGroups.push({
           id: group.id,
@@ -151,7 +163,7 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
           description: group.description,
           icon: group.icon,
           inviteCode: group.invite_code,
-          createdAt: group.created_at, // Add the createdAt property
+          createdAt: group.created_at,
           members: members,
         });
       }
@@ -177,7 +189,7 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
 
   return (
     <GroupsContext.Provider value={{
-      groups, setGroups, activeGroup, setActiveGroup, loadingGroups, setLoadingGroups, fetchGroups
+      groups, setGroups, activeGroup, setActiveGroup, loadingGroups, setLoadingGroups, fetchGroups, uploadGroupImage, uploadingImage
     }}>
       {children}
     </GroupsContext.Provider>

@@ -44,7 +44,7 @@ export function PostCard({ post }: PostCardProps) {
       // Add notification for post owner
       addNotification({
         content: `${currentUser.name} ${reactionText} your post`,
-        type: 'reaction',
+        type: reaction,
         related_post_id: post.id,
         actor_id: currentUser.id,
         user_id: post.user.id

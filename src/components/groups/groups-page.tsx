@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +30,7 @@ const supabase = {
 
 
 export function GroupsPage() {
-  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, fetchGroups } = useApp();
+  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, fetchGroups, uploadGroupImage } = useApp();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -45,7 +46,6 @@ export function GroupsPage() {
   const [groupImage, setGroupImage] = useState<string | null>(null); //Added state for image preview
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [newGroupIcon, setNewGroupIcon] = useState(''); // Added state for new group icon
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -76,30 +76,24 @@ export function GroupsPage() {
     }
   };
 
-  const handleImageUpload = async () => {
-    if (!selectedFile) return null;
+  const handleImageUpload = async (file: File) => {
+    if (!file) return null;
     setUploading(true);
-    const ext = selectedFile.name.split(".").pop();
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const path = `groups/${filename}`;
-
-    const { data, error } = await supabase.storage.from("uploads").upload(path, selectedFile, {
-      cacheControl: "3600",
-      upsert: true,
-    });
-
-    setUploading(false);
-    if (error) {
+    
+    try {
+      const imageUrl = await uploadGroupImage(file);
+      setUploading(false);
+      return imageUrl;
+    } catch (error) {
+      setUploading(false);
+      console.error("Error uploading image:", error);
       toast({
         title: "Upload failed",
-        description: error.message,
+        description: "Failed to upload image",
         variant: "destructive",
       });
       return null;
     }
-
-    const { data: urlData } = await supabase.storage.from("uploads").getPublicUrl(path);
-    return urlData?.publicUrl ?? null;
   };
 
   const handleCreateGroup = async () => {
@@ -115,17 +109,14 @@ export function GroupsPage() {
     setIsCreating(true);
     try {
       let imageUrl = null;
-      if (newGroupIcon) {
-        setSelectedFile(newGroupIcon);
-        imageUrl = await handleImageUpload();
+      if (selectedFile) {
+        imageUrl = await handleImageUpload(selectedFile);
       }
-
 
       await createGroup(newGroupName, imageUrl, newGroupDescription);
       setNewGroupName("");
       setNewGroupDescription("");
       setSelectedFile(null);
-      setNewGroupIcon(''); // Clear the icon
       setGroupImage(null); //Clear image preview
       if (fileInputRef.current) fileInputRef.current.value = "";
       setIsCreateOpen(false);
@@ -230,7 +221,11 @@ export function GroupsPage() {
                     id="image"
                     type="file"
                     accept="image/*"
-                    onChange={(e) => setNewGroupIcon(e.target.files?.[0] || null)}
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setSelectedFile(e.target.files[0]);
+                      }
+                    }}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -349,8 +344,8 @@ export function GroupsPage() {
                     {group.members.slice(0, 3).map(member => (
                       <img
                         key={member.id}
-                        src={member.avatar}
-                        alt={member.name}
+                        src={member.user.avatar}
+                        alt={member.user.name}
                         className="h-6 w-6 rounded-full border-2 border-background"
                       />
                     ))}

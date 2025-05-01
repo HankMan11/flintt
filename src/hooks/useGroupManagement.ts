@@ -25,9 +25,9 @@ export const useGroupManagement = (fetchGroups: () => Promise<void>) => {
         // Handle base64 image
         console.log("Processing base64 image");
         // Implementation for base64 upload would go here
-      } else if (icon && typeof File !== 'undefined' && icon instanceof File) {
-        // Type check for File instance
-        imageUrl = await uploadGroupImage(icon);
+      } else if (icon && typeof File !== 'undefined' && typeof icon === 'object' && 'type' in icon) {
+        // Safe type check for File instance without using instanceof
+        imageUrl = await uploadGroupImage(icon as File);
       }
 
       const { data: groupData, error: groupError } = await supabase

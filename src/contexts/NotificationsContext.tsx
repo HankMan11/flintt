@@ -65,8 +65,14 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
       if (error) throw error;
       
       if (data) {
-        setNotifications(data);
-        setUnreadCount(data.filter(n => !n.is_read).length);
+        // Cast the data to ensure correct types
+        const typedNotifications: Notification[] = data.map(item => ({
+          ...item,
+          type: item.type as NotificationType // Ensure the type is properly cast
+        }));
+        
+        setNotifications(typedNotifications);
+        setUnreadCount(typedNotifications.filter(n => !n.is_read).length);
       }
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -173,8 +179,14 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
       if (error) throw error;
       
       if (data) {
+        // Cast the returned notification to ensure correct types
+        const typedNotification: Notification = {
+          ...data,
+          type: data.type as NotificationType
+        };
+        
         // Add to local state
-        setNotifications(prev => [data, ...prev]);
+        setNotifications(prev => [typedNotification, ...prev]);
         setUnreadCount(prev => prev + 1);
         
         // Show toast for new notification

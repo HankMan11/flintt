@@ -49,13 +49,15 @@ export interface Comment {
   replies?: Comment[];
 }
 
+export type NotificationType = 'reaction' | 'comment' | 'new_post';
+
 export interface Notification {
   id: string;
   user_id: string;
   content: string;
   is_read: boolean;
   created_at: string;
-  type: 'like' | 'dislike' | 'heart' | 'comment';
+  type: NotificationType;
   related_post_id?: string;
   related_group_id?: string;
   actor_id?: string;
@@ -73,6 +75,7 @@ export interface Post {
   dislikes: string[];
   hearts: string[];
   comments: Comment[];
+  isPinned?: boolean;
 }
 
 export interface Stats {
@@ -117,4 +120,6 @@ export interface PostsContextType {
   dislikePost: (postId: string) => Promise<void>;
   heartPost: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string, parentCommentId?: string) => Promise<void>;
+  editPost?: (postId: string, caption: string) => Promise<void>;
+  pinPost?: (postId: string, isPinned: boolean) => Promise<void>;
 }

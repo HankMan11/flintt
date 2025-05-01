@@ -5,10 +5,9 @@ import { PostCard } from "./post-card";
 import { PostSearch, PostFilters } from "./post-search";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus } from "lucide-react";
+import { UserPlus, ChartBar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useMemo } from "react";
-import { ChartBar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export function Feed() {
@@ -37,7 +36,7 @@ export function Feed() {
       if (searchQuery) {
         const matchesCaption = post.caption?.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesUsername = post.user.username.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                               post.user.name.toLowerCase().includes(searchQuery.toLowerCase());
+                              post.user.name.toLowerCase().includes(searchQuery.toLowerCase());
 
         if (!matchesCaption && !matchesUsername) return false;
       }
@@ -56,7 +55,8 @@ export function Feed() {
     });
   }, [allPosts, searchQuery, filters, currentUser]);
 
-  const isWeekEnd = new Date().getDay() === 0; // Sunday
+  // Check if it's the end of the week (Sunday)
+  const isWeekEnd = new Date().getDay() === 0;
 
   if (!activeGroup) {
     return (
@@ -79,57 +79,59 @@ export function Feed() {
   }
 
   return (
-    <div className="px-4 py-6 md:px-6 lg:px-8">
-      <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">{activeGroup.name} Feed</h2>
-          <p className="text-muted-foreground">
-            {activeGroup.members.length} members • Share moments with your group
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex -space-x-2">
-            {activeGroup.members.slice(0, 5).map((member) => (
-              <img
-                key={member.id}
-                src={member.user.avatar}
-                alt={member.user.name}
-                className="h-8 w-8 rounded-full border-2 border-background"
+    <div className="px-4 py-6 md:px-6 lg:px-8 flex flex-col h-[calc(100vh-4rem)]">
+      <div className="sticky top-0 bg-background pt-2 pb-4 z-10">
+        <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold">{activeGroup.name} Feed</h2>
+            <p className="text-muted-foreground">
+              {activeGroup.members.length} members • {activeGroup.description || 'Share moments with your group'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex -space-x-2">
+              {activeGroup.members.slice(0, 5).map((member) => (
+                <img
+                  key={member.id}
+                  src={member.user.avatar}
+                  alt={member.user.name}
+                  className="h-8 w-8 rounded-full border-2 border-background"
+                />
+              ))}
+            </div>
+            <div className="relative">
+              <Input
+                className="w-40 pr-8"
+                placeholder="Invite Code"
+                value={activeGroup.inviteCode || inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                readOnly={!!activeGroup.inviteCode}
               />
-            ))}
-          </div>
-          <div className="relative">
-            <Input
-              className="w-40 pr-8"
-              placeholder="Invite Code"
-              value={activeGroup.inviteCode || inviteCode}
-              onChange={(e) => setInviteCode(e.target.value)}
-              readOnly={!!activeGroup.inviteCode}
-            />
-            <Button variant="ghost" size="icon" className="absolute right-0 top-0">
-              <UserPlus className="h-4 w-4" />
-            </Button>
+              <Button variant="ghost" size="icon" className="absolute right-0 top-0">
+                <UserPlus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
+
+        <PostSearch 
+          onSearch={setSearchQuery} 
+          onFilterChange={setFilters}
+        />
+
+        <CreatePost />
+
+        {isWeekEnd && (
+          <Button 
+            className="w-full mt-4" 
+            variant="outline"
+            onClick={() => navigate("/stats")}
+          >
+            <ChartBar className="w-4 h-4 mr-2" />
+            View Weekly Stats
+          </Button>
+        )}
       </div>
-
-      <PostSearch 
-        onSearch={setSearchQuery} 
-        onFilterChange={setFilters}
-      />
-
-      <CreatePost />
-
-      {isWeekEnd && (
-        <Button 
-          className="w-full mb-4" 
-          variant="outline"
-          onClick={() => navigate("/stats")}
-        >
-          <ChartBar className="w-4 h-4 mr-2" />
-          View Weekly Stats
-        </Button>
-      )}
 
       {filteredPosts.length === 0 ? (
         <Card className="p-6 text-center">
@@ -147,7 +149,7 @@ export function Feed() {
           </CardHeader>
         </Card>
       ) : (
-        <div className="space-y-6 overflow-y-auto h-[calc(100vh-16rem)] px-1">
+        <div className="space-y-6 overflow-y-auto flex-1 pr-1">
           {filteredPosts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}

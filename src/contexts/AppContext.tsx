@@ -1,16 +1,17 @@
-
 import React from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { GroupsProvider, useGroups } from "./GroupsContext";
 import { PostsProvider, usePosts } from "./PostsContext";
 import { supabase } from "@/integrations/supabase/client";
-import { NotificationsProvider } from "./NotificationsContext";
+import { NotificationsProvider, useNotifications } from "./NotificationsContext";
 import { useTheme } from "./ThemeContext";
+import { Post } from "@/types";
 
 export const useApp = () => {
   const auth = useAuth();
   const groups = useGroups();
   const posts = usePosts();
+  const notifications = useNotifications();
   const { theme, setTheme } = useTheme();
 
   // Add setDarkMode function that uses the theme context
@@ -58,15 +59,34 @@ export const useApp = () => {
     dislikePost: posts.dislikePost,
     heartPost: posts.heartPost,
     addComment: posts.addComment,
+    editPost: posts.editPost,
+    pinPost: posts.pinPost,
     reactToPost,
     
     // Theme control
     theme,
     setTheme,
     setDarkMode,
+    
+    // Notifications
+    notifications: notifications.notifications,
+    unreadCount: notifications.unreadCount,
+    markAsRead: notifications.markAsRead,
+    markAllAsRead: notifications.markAllAsRead,
+    addNotification: notifications.addNotification,
 
     filterGroupPosts: (groupId: string) => {
-      return posts.posts.filter(post => post.group?.id === groupId);
+      // First sort by pinned status, then by date
+      return posts.posts
+        .filter(post => post.group?.id === groupId)
+        .sort((a, b) => {
+          // First sort by pinned status (pinned posts first)
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          
+          // Then sort by date (newer posts first)
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
     },
     
     getSavedPosts: () => {
@@ -202,24 +222,8 @@ export const useApp = () => {
         
         // Upload image if provided
         let imageUrl = icon;
-        if (icon && typeof icon !== 'string') {
-          const fileObj = icon as unknown as File;
-          const ext = fileObj.name.split('.').pop();
-          const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('group-images')
-            .upload(filename, fileObj);
-
-          if (uploadError) {
-            console.error("Error uploading image:", uploadError);
-            return null;
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from('group-images')
-            .getPublicUrl(filename);
-          
-          imageUrl = publicUrl;
+        if (icon && typeof icon === 'object' && icon instanceof File) {
+          imageUrl = await groups.uploadGroupImage(icon);
         }
 
         const { data: groupData, error: groupError } = await supabase
@@ -258,7 +262,14 @@ export const useApp = () => {
           description: groupData.description,
           icon: groupData.icon,
           inviteCode: groupData.invite_code,
-          members: [auth.currentUser]
+          members: [{
+            id: `${groupData.id}-${auth.currentUser.id}`,
+            userId: auth.currentUser.id,
+            groupId: groupData.id,
+            role: 'admin',
+            user: auth.currentUser
+          }],
+          createdAt: groupData.created_at
         };
       } catch (error) {
         console.error("Error creating group:", error);

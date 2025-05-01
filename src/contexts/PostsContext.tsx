@@ -1,16 +1,17 @@
 
 import React, { createContext, useContext, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Post } from "@/types";
+import { Post, Comment, PostsContextType } from "@/types";
 import { useAuth } from "./AuthContext";
 import { useGroups } from "./GroupsContext";
-import { PostsContextType } from "@/types";
+import { useNotifications } from "./NotificationsContext";
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
 
 export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { currentUser } = useAuth();
   const { activeGroup } = useGroups();
+  const { addNotification } = useNotifications();
   const [posts, setPosts] = useState<Post[]>([]);
 
   const addPost = async (groupId: string, caption: string, mediaUrl: string, mediaType: "image" | "video") => {
@@ -54,6 +55,25 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
         comments: [],
       };
       setPosts(p => [postObj, ...p]);
+      
+      // Notify group members about new post
+      try {
+        activeGroup.members.forEach(member => {
+          // Don't notify the post creator
+          if (member.userId !== currentUser.id) {
+            addNotification({
+              user_id: member.userId,
+              content: `New post by ${currentUser.name} in "${activeGroup.name}"`,
+              type: 'new_post',
+              related_post_id: data.id,
+              related_group_id: activeGroup.id,
+              actor_id: currentUser.id
+            });
+          }
+        });
+      } catch (error) {
+        console.error("Error creating notifications:", error);
+      }
     }
   };
 
@@ -62,7 +82,6 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
     setPosts(posts => posts.filter(p => p.id !== postId));
   };
 
-  // Add missing methods
   const likePost = async (postId: string) => {
     if (!currentUser) return;
     
@@ -80,6 +99,18 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
     } else {
       // User hasn't liked, so add like
       newLikes.push(currentUser.id);
+      
+      // Notify post owner about like (if it's not the current user)
+      if (post.user.id !== currentUser.id) {
+        await addNotification({
+          user_id: post.user.id,
+          content: `${currentUser.name} liked your post`,
+          type: 'reaction',
+          related_post_id: postId,
+          related_group_id: post.group.id,
+          actor_id: currentUser.id
+        });
+      }
       
       // Remove from dislikes if present
       const dislikeIndex = post.dislikes.indexOf(currentUser.id);
@@ -139,6 +170,18 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       // User hasn't disliked, so add dislike
       newDislikes.push(currentUser.id);
       
+      // Notify post owner about dislike (if it's not the current user)
+      if (post.user.id !== currentUser.id) {
+        await addNotification({
+          user_id: post.user.id,
+          content: `${currentUser.name} disliked your post`,
+          type: 'reaction',
+          related_post_id: postId,
+          related_group_id: post.group.id,
+          actor_id: currentUser.id
+        });
+      }
+      
       // Remove from likes if present
       const likeIndex = post.likes.indexOf(currentUser.id);
       if (likeIndex > -1) {
@@ -196,6 +239,18 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
     } else {
       // User hasn't hearted, so add heart
       newHearts.push(currentUser.id);
+      
+      // Notify post owner about heart (if it's not the current user)
+      if (post.user.id !== currentUser.id) {
+        await addNotification({
+          user_id: post.user.id,
+          content: `${currentUser.name} hearted your post`,
+          type: 'reaction',
+          related_post_id: postId,
+          related_group_id: post.group.id,
+          actor_id: currentUser.id
+        });
+      }
     }
     
     // Update post in state
@@ -218,7 +273,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
     const post = posts.find(p => p.id === postId);
     if (!post) return;
     
-    const newComment = {
+    const newComment: Comment = {
       id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
       user: currentUser,
       content: content.trim(),
@@ -259,12 +314,77 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
           p.id === postId ? {...p, comments: [...p.comments, newComment]} : p
         )
       );
+      
+      // Notify post owner about comment (if it's not the current user)
+      if (post.user.id !== currentUser.id) {
+        await addNotification({
+          user_id: post.user.id,
+          content: `${currentUser.name} commented on your post`,
+          type: 'comment',
+          related_post_id: postId,
+          related_group_id: post.group.id,
+          actor_id: currentUser.id
+        });
+      }
+    }
+  };
+
+  // Implement edit post function for feature #16
+  const editPost = async (postId: string, caption: string) => {
+    if (!currentUser) return;
+    
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    
+    // Check if user is the owner of the post
+    if (post.user.id !== currentUser.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from("posts")
+        .update({ caption })
+        .eq("id", postId);
+        
+      if (error) throw error;
+      
+      // Update local state
+      setPosts(currentPosts => 
+        currentPosts.map(p => 
+          p.id === postId ? {...p, caption} : p
+        )
+      );
+    } catch (error) {
+      console.error("Error updating post:", error);
+    }
+  };
+  
+  // Implement pin post function for feature #12
+  const pinPost = async (postId: string, isPinned: boolean) => {
+    if (!currentUser || !activeGroup) return;
+    
+    // Check if user is admin of the group
+    const userMember = activeGroup.members.find(m => m.userId === currentUser.id);
+    if (!userMember || userMember.role !== 'admin') return;
+    
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+    
+    try {
+      // In a real app, update the database
+      // For now just update the state
+      setPosts(currentPosts => 
+        currentPosts.map(p => 
+          p.id === postId ? {...p, isPinned} : p
+        )
+      );
+    } catch (error) {
+      console.error("Error pinning post:", error);
     }
   };
 
   return (
     <PostsContext.Provider value={{
-      posts, setPosts, addPost, deletePost, likePost, dislikePost, heartPost, addComment
+      posts, setPosts, addPost, deletePost, likePost, dislikePost, heartPost, addComment, editPost, pinPost
     }}>
       {children}
     </PostsContext.Provider>

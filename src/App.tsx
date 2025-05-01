@@ -1,4 +1,3 @@
-
 import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,6 +11,7 @@ import Profile from "./pages/Profile";
 import SettingsPage from "./pages/Settings";
 import { NotificationsProvider } from "./contexts/NotificationsContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import GroupSettingsPage from "./pages/GroupSettings";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -44,6 +44,7 @@ const App = () => {
                   <Route path="/auth" element={<AuthPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="/profile" element={<Profile />} />
+                  <Route path="/group-settings" element={<GroupSettingsPage />} />
                   <Route path="/*" element={<Index />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>

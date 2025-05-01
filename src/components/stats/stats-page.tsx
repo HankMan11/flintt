@@ -27,17 +27,17 @@ export function StatsPage() {
     );
   }
 
-  const groupStats = getGroupStats(activeGroup.id, timeRange);
+  const groupStats = getGroupStats(activeGroup.id);
   if (!groupStats) return null;
   
-  const personalStats = getUserStats(currentUser.id, activeGroup.id, timeRange);
+  const personalStats = getUserStats(currentUser.id, activeGroup.id);
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
       <div className="mb-8">
         <h2 className="text-2xl font-bold">{activeGroup.name} Statistics</h2>
         <p className="text-muted-foreground">
-          {timeRange === 'week' ? 'Weekly' : timeRange === 'month' ? 'Monthly' : 'All-time'} group engagement and contribution statistics
+          View group engagement and contribution statistics
         </p>
       </div>
 

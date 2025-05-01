@@ -1,69 +1,21 @@
-
 import React from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { GroupsProvider, useGroups } from "./GroupsContext";
 import { PostsProvider, usePosts } from "./PostsContext";
-import { NotificationsProvider, useNotifications } from "./NotificationsContext";
-import { useTheme } from "./ThemeContext";
-import { User } from "@/types";
-
-// Import new hooks for refactored functionality
-import { useStats } from "@/hooks/useStats";
-import { useGroupManagement } from "@/hooks/useGroupManagement";
-import { usePostExtensions } from "@/hooks/usePostExtensions";
+import { supabase } from "@/integrations/supabase/client";
+import { NotificationsProvider } from "./NotificationsContext";
 
 export const useApp = () => {
   const auth = useAuth();
   const groups = useGroups();
   const posts = usePosts();
-  const notifications = useNotifications();
-  const { theme, setTheme } = useTheme();
-
-  // Initialize our refactored hooks
-  const { getGroupStats, getUserStats } = useStats(posts.posts);
-  const { createGroup: createGroupBase, joinGroup: joinGroupBase } = 
-    useGroupManagement(groups.fetchGroups);
-  const { reactToPost, filterGroupPosts, getSavedPosts } = 
-    usePostExtensions(posts.posts, posts.likePost, posts.dislikePost, posts.heartPost);
-
-  // Add setDarkMode function that uses the theme context
-  const setDarkMode = (isDark: boolean) => {
-    setTheme(isDark ? "dark" : "light");
-  };
-
-  // Wrapper for createGroup to reduce parameter passing
-  const createGroup = async (name: string, icon: string | null, description: string = "") => {
-    return createGroupBase(
-      auth.currentUser, 
-      name, 
-      icon, 
-      description, 
-      groups.uploadGroupImage
-    );
-  };
-
-  // Wrapper for joinGroup to reduce parameter passing
-  const joinGroup = async (inviteCode: string) => {
-    return joinGroupBase(auth.currentUser, inviteCode);
-  };
-
-  // Wrapper for getSavedPosts to handle undefined currentUser
-  const getSavedPostsWrapped = () => {
-    return getSavedPosts(auth.currentUser?.id);
-  };
 
   return {
-    // Auth context
     currentUser: auth.currentUser,
     setCurrentUser: auth.setCurrentUser,
     login: auth.login,
     logout: auth.logout,
-    blockedUsers: auth.blockedUsers,
-    blockUser: auth.blockUser,
-    unblockUser: auth.unblockUser,
-    isUserBlocked: auth.isUserBlocked,
 
-    // Groups context
     groups: groups.groups,
     setGroups: groups.setGroups,
     activeGroup: groups.activeGroup,
@@ -71,10 +23,7 @@ export const useApp = () => {
     loadingGroups: groups.loadingGroups,
     setLoadingGroups: groups.setLoadingGroups,
     fetchGroups: groups.fetchGroups,
-    uploadGroupImage: groups.uploadGroupImage,
-    uploadingImage: groups.uploadingImage,
 
-    // Posts context
     posts: posts.posts,
     setPosts: posts.setPosts,
     addPost: posts.addPost,
@@ -83,34 +32,236 @@ export const useApp = () => {
     dislikePost: posts.dislikePost,
     heartPost: posts.heartPost,
     addComment: posts.addComment,
-    editPost: posts.editPost,
-    pinPost: posts.pinPost,
+
+    filterGroupPosts: (groupId: string) => {
+      return posts.posts.filter(post => post.group?.id === groupId);
+    },
     
-    // Post extensions (refactored)
-    reactToPost,
-    filterGroupPosts,
-    getSavedPosts: getSavedPostsWrapped,
+    getSavedPosts: () => {
+      if (!auth.currentUser) return [];
+      return posts.posts.filter(post => post.hearts.includes(auth.currentUser!.id));
+    },
     
-    // Stats (refactored)
-    getGroupStats: (groupId: string, timeRange: "all" | "month" | "week") => 
-      getGroupStats(groupId, timeRange, groups.groups),
-    getUserStats,
+    getGroupStats: (groupId: string) => {
+      const groupPosts = posts.posts.filter(post => post.group?.id === groupId);
+      
+      const userPostCounts: Record<string, number> = {};
+      const userLikeCounts: Record<string, number> = {};
+      const userHeartCounts: Record<string, number> = {};
+      const userCommentCounts: Record<string, number> = {};
+      const mostSavedPosts: { post: any; count: number }[] = [];
+      
+      groupPosts.forEach(post => {
+        userPostCounts[post.user.id] = (userPostCounts[post.user.id] || 0) + 1;
+        userLikeCounts[post.user.id] = (userLikeCounts[post.user.id] || 0) + post.likes.length;
+        userHeartCounts[post.user.id] = (userHeartCounts[post.user.id] || 0) + post.hearts.length;
+        if (post.hearts.length > 0) {
+          mostSavedPosts.push({ post, count: post.hearts.length });
+        }
+        
+        const countComments = (comments: any[]) => {
+          comments.forEach(comment => {
+            userCommentCounts[comment.user.id] = (userCommentCounts[comment.user.id] || 0) + 1;
+            if (comment.replies && comment.replies.length > 0) {
+              countComments(comment.replies);
+            }
+          });
+        };
+        
+        countComments(post.comments);
+      });
+      
+      const activeGroup = groups.activeGroup;
+      if (!activeGroup) return null;
+      
+      const mostUploads = Object.entries(userPostCounts)
+        .map(([userId, count]) => {
+          const user = activeGroup.members.find(member => member.id === userId);
+          return { user, count };
+        })
+        .filter(item => item.user)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      const mostLiked = Object.entries(userLikeCounts)
+        .map(([userId, count]) => {
+          const user = activeGroup.members.find(member => member.id === userId);
+          return { user, count };
+        })
+        .filter(item => item.user)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      const mostHearted = Object.entries(userHeartCounts)
+        .map(([userId, count]) => {
+          const user = activeGroup.members.find(member => member.id === userId);
+          return { user, count };
+        })
+        .filter(item => item.user)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      const mostCommented = Object.entries(userCommentCounts)
+        .map(([userId, count]) => {
+          const user = activeGroup.members.find(member => member.id === userId);
+          return { user, count };
+        })
+        .filter(item => item.user)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+      
+      mostSavedPosts.sort((a, b) => b.count - a.count);
+      
+      return {
+        mostUploads,
+        mostLiked,
+        mostHearted,
+        mostCommented,
+        mostSavedPosts: mostSavedPosts.slice(0, 5)
+      };
+    },
     
-    // Theme control
-    theme,
-    setTheme,
-    setDarkMode,
+    getUserStats: (userId: string, groupId: string) => {
+      const groupPosts = posts.posts.filter(post => post.group?.id === groupId);
+      
+      let uploads = 0;
+      let likes = 0;
+      let dislikes = 0;
+      let hearts = 0;
+      let commentCount = 0;
+      
+      uploads = groupPosts.filter(post => post.user.id === userId).length;
+      
+      groupPosts.forEach(post => {
+        if (post.likes.includes(userId)) likes++;
+        if (post.dislikes.includes(userId)) dislikes++;
+        if (post.hearts.includes(userId)) hearts++;
+      });
+      
+      const countUserComments = (comments: any[], userId: string): number => {
+        let count = 0;
+        comments.forEach(comment => {
+          if (comment.user.id === userId) count++;
+          if (comment.replies && comment.replies.length > 0) {
+            count += countUserComments(comment.replies, userId);
+          }
+        });
+        return count;
+      };
+      
+      groupPosts.forEach(post => {
+        commentCount += countUserComments(post.comments, userId);
+      });
+      
+      return {
+        uploads,
+        likes,
+        dislikes,
+        hearts,
+        commentCount
+      };
+    },
     
-    // Notifications
-    notifications: notifications.notifications,
-    unreadCount: notifications.unreadCount,
-    markAsRead: notifications.markAsRead,
-    markAllAsRead: notifications.markAllAsRead,
-    addNotification: notifications.addNotification,
+    createGroup: async (name: string, icon: string, description: string = "") => {
+      if (!auth.currentUser) return null;
+      
+      try {
+        const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+        
+        const { data: groupData, error: groupError } = await supabase
+          .from('groups')
+          .insert({
+            name,
+            icon,
+            description,
+            invite_code: inviteCode
+          })
+          .select()
+          .single();
+        
+        if (groupError) {
+          console.error("Error creating group:", groupError);
+          return null;
+        }
+        
+        const { error: memberError } = await supabase
+          .from('group_members')
+          .insert({
+            group_id: groupData.id,
+            user_id: auth.currentUser.id
+          });
+        
+        if (memberError) {
+          console.error("Error adding user to group:", memberError);
+          return null;
+        }
+        
+        await groups.fetchGroups();
+        
+        return {
+          id: groupData.id,
+          name: groupData.name,
+          description: groupData.description,
+          icon: groupData.icon,
+          inviteCode: groupData.invite_code,
+          members: [auth.currentUser]
+        };
+      } catch (error) {
+        console.error("Error creating group:", error);
+        return null;
+      }
+    },
     
-    // Group management (refactored)
-    createGroup,
-    joinGroup
+    joinGroup: async (inviteCode: string) => {
+      if (!auth.currentUser) return false;
+      
+      try {
+        const { data: groupData, error: groupError } = await supabase
+          .from('groups')
+          .select('*')
+          .eq('invite_code', inviteCode)
+          .single();
+        
+        if (groupError || !groupData) {
+          console.error("Error finding group:", groupError);
+          return false;
+        }
+        
+        const { data: memberData, error: memberCheckError } = await supabase
+          .from('group_members')
+          .select('*')
+          .eq('group_id', groupData.id)
+          .eq('user_id', auth.currentUser.id);
+        
+        if (memberCheckError) {
+          console.error("Error checking membership:", memberCheckError);
+          return false;
+        }
+        
+        if (memberData && memberData.length > 0) {
+          return true;
+        }
+        
+        const { error: joinError } = await supabase
+          .from('group_members')
+          .insert({
+            group_id: groupData.id,
+            user_id: auth.currentUser.id
+          });
+        
+        if (joinError) {
+          console.error("Error joining group:", joinError);
+          return false;
+        }
+        
+        await groups.fetchGroups();
+        
+        return true;
+      } catch (error) {
+        console.error("Error joining group:", error);
+        return false;
+      }
+    }
   };
 };
 

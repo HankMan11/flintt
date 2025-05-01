@@ -1,4 +1,3 @@
-
 import { Bell, Home, LogOut, Settings, User, BarChart } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useState } from "react";
 import { NotificationsDrawer } from "@/components/notifications/NotificationsDrawer";
@@ -21,7 +20,6 @@ export function Header() {
   const { unreadCount } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
@@ -101,11 +99,11 @@ export function Header() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <div onClick={() => navigate('/profile')} className="flex w-full cursor-pointer items-center">
+                <DropdownMenuItem asChild>
+                  <Link to="/profile" className="flex w-full cursor-pointer items-center">
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
-                  </div>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/settings" className="flex w-full cursor-pointer items-center">

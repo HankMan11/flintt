@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,46 +10,25 @@ import { Plus, Search, UserPlus, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 
-// Placeholder for Supabase client - REPLACE WITH YOUR ACTUAL INSTANCE
-const supabase = {
-  storage: {
-    from: (bucket: string) => ({
-      upload: async (path: string, file: File, options: any) => {
-        // Simulate upload - REPLACE WITH ACTUAL SUPABASE UPLOAD
-        console.log("Simulating upload:", path, file, options);
-        return { data: {}, error: null };
-      },
-      getPublicUrl: async (path: string) => {
-        // Simulate getting public URL - REPLACE WITH ACTUAL SUPABASE FUNCTION
-        console.log("Simulating getPublicUrl:", path);
-        return { data: { publicUrl: "https://example.com/image.jpg" } };
-      }
-    })
-  }
-};
-
-
 export function GroupsPage() {
-  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, fetchGroups, uploadGroupImage } = useApp();
+  const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, fetchGroups } = useApp();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-
+  
   const [newGroupName, setNewGroupName] = useState("");
+  const [newGroupIcon, setNewGroupIcon] = useState("");
   const [newGroupDescription, setNewGroupDescription] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [joinError, setJoinError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [groupImage, setGroupImage] = useState<string | null>(null); //Added state for image preview
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const { toast } = useToast();
+
   const navigate = useNavigate();
 
+  // Load groups on component mount
   useEffect(() => {
     if (!loadingGroups) {
       fetchGroups();
@@ -76,58 +55,39 @@ export function GroupsPage() {
     }
   };
 
-  const handleImageUpload = async (file: File) => {
-    if (!file) return null;
-    setUploading(true);
+  const handleCreateGroup = async () => {
+    if (newGroupName.trim() === "") return;
+    
+    setIsCreating(true);
     
     try {
-      const imageUrl = await uploadGroupImage(file);
-      setUploading(false);
-      return imageUrl;
-    } catch (error) {
-      setUploading(false);
-      console.error("Error uploading image:", error);
-      toast({
-        title: "Upload failed",
-        description: "Failed to upload image",
-        variant: "destructive",
-      });
-      return null;
-    }
-  };
-
-  const handleCreateGroup = async () => {
-    if (!newGroupName.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a group name",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setIsCreating(true);
-    try {
-      let imageUrl = null;
-      if (selectedFile) {
-        imageUrl = await handleImageUpload(selectedFile);
+      // For demo purposes, if no icon provided, use a random one
+      const icon = newGroupIcon || `https://source.unsplash.com/random/100x100/?${newGroupName.toLowerCase()}`;
+      
+      const newGroup = await createGroup(newGroupName, icon, newGroupDescription);
+      
+      if (newGroup) {
+        toast({
+          title: "Group Created",
+          description: `You've successfully created ${newGroupName}`,
+        });
+        
+        setNewGroupName("");
+        setNewGroupIcon("");
+        setNewGroupDescription("");
+        setIsCreateOpen(false);
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to create group. Please try again.",
+          variant: "destructive",
+        });
       }
-
-      await createGroup(newGroupName, imageUrl, newGroupDescription);
-      setNewGroupName("");
-      setNewGroupDescription("");
-      setSelectedFile(null);
-      setGroupImage(null); //Clear image preview
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      setIsCreateOpen(false);
-      toast({
-        title: "Success",
-        description: "Group created successfully",
-      });
-    } catch (error: any) {
+    } catch (error) {
+      console.error("Error creating group:", error);
       toast({
         title: "Error",
-        description: error?.message || "Failed to create group",
+        description: "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
@@ -137,25 +97,25 @@ export function GroupsPage() {
 
   const handleJoinGroup = async () => {
     if (inviteCode.trim() === "") return;
-
+    
     setIsJoining(true);
     setJoinError("");
-
+    
     try {
       const success = await joinGroup(inviteCode);
-
+      
       if (success) {
         toast({
           title: "Group Joined",
           description: "You've successfully joined the group",
         });
-
+        
         setInviteCode("");
         setIsJoinOpen(false);
       } else {
         setJoinError("Invalid invite code. Please try again.");
         toast({
-          title: "Error",
+          title: "Error", 
           description: "Failed to join group. Invalid invite code.",
           variant: "destructive",
         });
@@ -173,14 +133,14 @@ export function GroupsPage() {
     }
   };
 
-  const filteredGroups = groups.filter(group =>
+  const filteredGroups = groups.filter(group => 
     group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     group.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="px-4 py-6 md:px-6 lg:px-8 flex flex-col h-[calc(100vh-4rem)]">
-      <div className="mb-6 flex items-center justify-between sticky top-0 bg-background z-10 py-4">
+    <div className="px-4 py-6 md:px-6 lg:px-8">
+      <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">My Groups</h2>
           <p className="text-muted-foreground">View and manage your groups</p>
@@ -216,16 +176,11 @@ export function GroupsPage() {
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="image">Group Image</Label>
+                  <Label htmlFor="icon">Group Icon URL (optional)</Label>
                   <Input
-                    id="image"
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      if (e.target.files && e.target.files[0]) {
-                        setSelectedFile(e.target.files[0]);
-                      }
-                    }}
+                    id="icon"
+                    value={newGroupIcon}
+                    onChange={(e) => setNewGroupIcon(e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -322,7 +277,7 @@ export function GroupsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 overflow-y-auto">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filteredGroups.map(group => (
             <Card key={group.id} className="overflow-hidden">
               <div className="aspect-video w-full overflow-hidden">
@@ -344,8 +299,8 @@ export function GroupsPage() {
                     {group.members.slice(0, 3).map(member => (
                       <img
                         key={member.id}
-                        src={member.user.avatar}
-                        alt={member.user.name}
+                        src={member.avatar}
+                        alt={member.name}
                         className="h-6 w-6 rounded-full border-2 border-background"
                       />
                     ))}

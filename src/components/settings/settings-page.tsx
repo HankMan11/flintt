@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,10 +10,9 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { PostCard } from "../posts/post-card";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 export function SettingsPage() {
-  const { currentUser, getSavedPosts, setDarkMode } = useApp();
+  const { currentUser, getSavedPosts } = useApp();
   const [profileForm, setProfileForm] = useState({
     name: currentUser?.name || "",
     username: currentUser?.username || "",
@@ -179,10 +178,7 @@ export function SettingsPage() {
                   </div>
                   <Switch
                     checked={preferences.darkMode}
-                    onCheckedChange={(checked) => {
-                      setPreferences({ ...preferences, darkMode: checked });
-                      setDarkMode(checked); // This now uses the method from AppContext
-                    }} 
+                    onCheckedChange={(checked) => setPreferences({ ...preferences, darkMode: checked })}
                   />
                 </div>
               </div>

@@ -8,10 +8,6 @@ interface AuthContextType {
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  blockedUsers: string[];
-  blockUser: (userId: string) => void;
-  unblockUser: (userId: string) => void;
-  isUserBlocked: (userId: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -19,19 +15,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
   const { user: authUser, signOut: supabaseSignOut } = useSupabaseAuth();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [blockedUsers, setBlockedUsers] = useState<string[]>([]);
-
-  const blockUser = (userId: string) => {
-    setBlockedUsers(prev => [...prev, userId]);
-  };
-
-  const unblockUser = (userId: string) => {
-    setBlockedUsers(prev => prev.filter(id => id !== userId));
-  };
-
-  const isUserBlocked = (userId: string) => {
-    return blockedUsers.includes(userId);
-  };
 
   useEffect(() => {
     if (authUser) {
@@ -56,16 +39,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      currentUser, 
-      setCurrentUser, 
-      login, 
-      logout,
-      blockedUsers,
-      blockUser,
-      unblockUser,
-      isUserBlocked
-    }}>
+    <AuthContext.Provider value={{ currentUser, setCurrentUser, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

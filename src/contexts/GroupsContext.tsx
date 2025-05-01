@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Group, GroupMember, User } from "@/types";
+import { Group } from "@/types";
 import { mockUsers } from "@/data/mockData";
 import { useAuth } from "./AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,8 +14,6 @@ interface GroupsContextType {
   loadingGroups: boolean;
   setLoadingGroups: React.Dispatch<React.SetStateAction<boolean>>;
   fetchGroups: () => Promise<void>;
-  uploadGroupImage: (file: File) => Promise<string | null>;
-  uploadingImage: boolean;
 }
 
 const GroupsContext = createContext<GroupsContextType | undefined>(undefined);
@@ -24,34 +22,8 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
   const [groups, setGroups] = useState<Group[]>([]);
   const [activeGroup, setActiveGroup] = useState<Group | null>(null);
   const [loadingGroups, setLoadingGroups] = useState<boolean>(true);
-  const [uploadingImage, setUploadingImage] = useState<boolean>(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
-
-  const uploadGroupImage = async (file: File): Promise<string | null> => {
-    try {
-      setUploadingImage(true);
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('group-images')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('group-images')
-        .getPublicUrl(fileName);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      return null;
-    } finally {
-      setUploadingImage(false);
-    }
-  };
 
   const fetchGroups = async () => {
     if (!currentUser) {
@@ -139,23 +111,13 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
           continue;
         }
 
-        // Convert profiles to GroupMember objects
-        const members: GroupMember[] = profilesData.map(profile => {
-          const user: User = {
-            id: profile.id,
-            name: profile.username || 'Anonymous User',
-            username: profile.username || 'anonymous',
-            avatar: profile.avatar_url || 'https://via.placeholder.com/150',
-          };
-          
-          return {
-            id: `${group.id}-${profile.id}`, // Create a unique ID for the group membership
-            userId: profile.id,
-            groupId: group.id,
-            role: profile.id === currentUser.id ? 'admin' : 'member', // Assuming creator is admin
-            user: user
-          };
-        });
+        // Convert profiles to the format expected by the application
+        const members = profilesData.map(profile => ({
+          id: profile.id,
+          name: profile.username || 'Anonymous User',
+          username: profile.username || 'anonymous',
+          avatar: profile.avatar_url || 'https://via.placeholder.com/150',
+        }));
 
         fetchedGroups.push({
           id: group.id,
@@ -163,7 +125,7 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
           description: group.description,
           icon: group.icon,
           inviteCode: group.invite_code,
-          createdAt: group.created_at,
+          createdAt: group.created_at, // Add the createdAt property
           members: members,
         });
       }
@@ -189,7 +151,7 @@ export const GroupsProvider: React.FC<{children: React.ReactNode}> = ({ children
 
   return (
     <GroupsContext.Provider value={{
-      groups, setGroups, activeGroup, setActiveGroup, loadingGroups, setLoadingGroups, fetchGroups, uploadGroupImage, uploadingImage
+      groups, setGroups, activeGroup, setActiveGroup, loadingGroups, setLoadingGroups, fetchGroups
     }}>
       {children}
     </GroupsContext.Provider>

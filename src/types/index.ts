@@ -7,38 +7,14 @@ export interface User {
   isAdmin?: boolean;
 }
 
-export type GroupRole = 'admin' | 'member';
-
-export interface GroupMember {
-  id: string;
-  userId: string;
-  groupId: string;
-  role: GroupRole;
-  user: User;
-}
-
 export interface Group {
   id: string;
   name: string;
-  imageUrl?: string;
-  icon?: string;
-  members: GroupMember[];
+  icon: string;
+  members: User[];
   createdAt: string;
   description?: string;
   inviteCode?: string;
-  isArchived?: boolean;
-}
-
-export interface GroupsContextType {
-  groups: Group[];
-  setGroups: React.Dispatch<React.SetStateAction<Group[]>>;
-  activeGroup: Group | null;
-  setActiveGroup: (group: Group | null) => void;
-  loadingGroups: boolean;
-  setLoadingGroups: React.Dispatch<React.SetStateAction<boolean>>;
-  fetchGroups: () => Promise<void>;
-  uploadGroupImage: (file: File) => Promise<string | null>;
-  uploadingImage: boolean;
 }
 
 export interface Comment {
@@ -47,20 +23,6 @@ export interface Comment {
   content: string;
   createdAt: string;
   replies?: Comment[];
-}
-
-export type NotificationType = 'reaction' | 'comment' | 'new_post';
-
-export interface Notification {
-  id: string;
-  user_id: string;
-  content: string;
-  is_read: boolean;
-  created_at: string;
-  type: NotificationType;
-  related_post_id?: string;
-  related_group_id?: string;
-  actor_id?: string;
 }
 
 export interface Post {
@@ -75,7 +37,6 @@ export interface Post {
   dislikes: string[];
   hearts: string[];
   comments: Comment[];
-  isPinned?: boolean;
 }
 
 export interface Stats {
@@ -109,17 +70,4 @@ export interface Stats {
     uploads: number;
     comments: number;
   };
-}
-
-export interface PostsContextType {
-  posts: Post[];
-  setPosts: React.Dispatch<React.SetStateAction<Post[]>>;
-  addPost: (groupId: string, caption: string, mediaUrl: string, mediaType: "image" | "video") => Promise<void>;
-  deletePost: (postId: string) => void;
-  likePost: (postId: string) => Promise<void>;
-  dislikePost: (postId: string) => Promise<void>;
-  heartPost: (postId: string) => Promise<void>;
-  addComment: (postId: string, content: string, parentCommentId?: string) => Promise<void>;
-  editPost?: (postId: string, caption: string) => Promise<void>;
-  pinPost?: (postId: string, isPinned: boolean) => Promise<void>;
 }

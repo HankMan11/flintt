@@ -1,3 +1,4 @@
+
 import { Bell, Home, LogOut, Settings, User, BarChart } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useNotifications } from "@/contexts/NotificationsContext";
 import { useState } from "react";
 import { NotificationsDrawer } from "@/components/notifications/NotificationsDrawer";
@@ -20,6 +21,7 @@ export function Header() {
   const { unreadCount } = useNotifications();
   const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">

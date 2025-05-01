@@ -1,3 +1,4 @@
+
 import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -7,9 +8,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import AuthPage from "@/pages/Auth";
-import Profile from "./pages/Profile"; // Added Profile component import
-import SettingsPage from "./pages/Settings"; // Added SettingsPage component import
-
+import Profile from "./pages/Profile";
+import SettingsPage from "./pages/Settings";
+import { NotificationsProvider } from "./contexts/NotificationsContext";
+import { ThemeProvider } from "./contexts/ThemeContext";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -31,21 +33,25 @@ const LoadingFallback = () => (
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Suspense fallback={<LoadingFallback />}>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/*" element={<Index />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </Suspense>
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Suspense fallback={<LoadingFallback />}>
+            <NotificationsProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/auth" element={<AuthPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/*" element={<Index />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </NotificationsProvider>
+          </Suspense>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };

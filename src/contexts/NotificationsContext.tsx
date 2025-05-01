@@ -1,115 +1,164 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useApp } from './AppContext';
-import { supabase } from '@/integrations/supabase/client';
-import { Notification } from '@/types';
+import { toast } from '@/hooks/use-toast';
+
+// Define notification type
+export interface Notification {
+  id: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
+  type: 'reaction' | 'comment' | 'new_post';
+  related_post_id?: string;
+  related_group_id?: string;
+  actor_id?: string;
+  user_id: string;
+}
 
 interface NotificationsContextType {
   notifications: Notification[];
   unreadCount: number;
-  addNotification: (notification: Notification) => void;
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
+  markAsRead: (notificationId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  addNotification: (notification: Omit<Notification, 'id' | 'created_at' | 'is_read'>) => Promise<void>;
 }
 
-const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
+const NotificationsContext = createContext<NotificationsContextType>({
+  notifications: [],
+  unreadCount: 0,
+  markAsRead: async () => {},
+  markAllAsRead: async () => {},
+  addNotification: async () => {},
+});
 
-export function NotificationsProvider({ children }: { children: React.ReactNode }) {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
+export const useNotifications = () => useContext(NotificationsContext);
+
+interface NotificationsProviderProps {
+  children: React.ReactNode;
+}
+
+export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ children }) => {
   const { currentUser } = useApp();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
+  // Fetch notifications when user changes
   useEffect(() => {
-    if (!currentUser) return;
-
-    // Fetch existing notifications
-    const fetchNotifications = async () => {
-      const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending: false });
-
-      if (!error && data) {
-        setNotifications(data);
-      }
-    };
-
-    fetchNotifications();
-
-    // Subscribe to new notifications
-    const channel = supabase
-      .channel('notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${currentUser.id}`,
-        },
-        (payload) => {
-          setNotifications((prev) => [payload.new as Notification, ...prev]);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    if (currentUser) {
+      fetchNotifications();
+    } else {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
   }, [currentUser]);
 
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  // Set up interval to fetch notifications periodically
+  useEffect(() => {
+    if (currentUser) {
+      const interval = setInterval(fetchNotifications, 30000); // Every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [currentUser]);
 
-  const addNotification = (notification: Notification) => {
-    setNotifications(prev => [notification, ...prev]);
+  const fetchNotifications = async () => {
+    if (!currentUser) return;
+    
+    // In a real app, you would fetch from API
+    // For now, we'll use mock data
+    const mockNotifications: Notification[] = [
+      {
+        id: '1',
+        content: 'John liked your post',
+        created_at: new Date().toISOString(),
+        is_read: false,
+        type: 'reaction',
+        related_post_id: '123',
+        actor_id: '456',
+        user_id: currentUser.id
+      },
+      {
+        id: '2',
+        content: 'Amy commented on your post',
+        created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        is_read: true,
+        type: 'comment',
+        related_post_id: '123',
+        actor_id: '789',
+        user_id: currentUser.id
+      },
+      {
+        id: '3',
+        content: 'New post in "Hiking Adventures" group',
+        created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
+        is_read: false,
+        type: 'new_post',
+        related_post_id: '456',
+        related_group_id: '111',
+        actor_id: '222',
+        user_id: currentUser.id
+      }
+    ];
+
+    setNotifications(mockNotifications);
+    setUnreadCount(mockNotifications.filter(n => !n.is_read).length);
   };
 
-  const markAsRead = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', id);
-
-      if (!error) {
-        setNotifications(prev =>
-          prev.map(n => (n.id === id ? { ...n, is_read: true } : n))
-        );
-      }
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
-    }
+  const markAsRead = async (notificationId: string) => {
+    // In a real app, you would call an API
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === notificationId 
+          ? { ...notif, is_read: true } 
+          : notif
+      )
+    );
+    
+    // Update unread count
+    setUnreadCount(prev => Math.max(0, prev - 1));
   };
 
   const markAllAsRead = async () => {
-    if (!currentUser) return;
+    // In a real app, you would call an API
+    setNotifications(prev => 
+      prev.map(notif => ({ ...notif, is_read: true }))
+    );
+    
+    // Reset unread count
+    setUnreadCount(0);
+  };
 
-    try {
-      const { error } = await supabase
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', currentUser.id);
-
-      if (!error) {
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      }
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-    }
+  const addNotification = async (notification: Omit<Notification, 'id' | 'created_at' | 'is_read'>) => {
+    // In a real app, you would call an API
+    const newNotification: Notification = {
+      ...notification,
+      id: `temp-${Date.now()}`,
+      created_at: new Date().toISOString(),
+      is_read: false,
+    };
+    
+    setNotifications(prev => [newNotification, ...prev]);
+    setUnreadCount(prev => prev + 1);
+    
+    // Show toast for new notification
+    toast({
+      title: "New notification",
+      description: notification.content,
+      duration: 5000,
+    });
   };
 
   return (
-    <NotificationsContext.Provider
-      value={{ notifications, unreadCount, addNotification, markAsRead, markAllAsRead }}
+    <NotificationsContext.Provider 
+      value={{ 
+        notifications, 
+        unreadCount, 
+        markAsRead, 
+        markAllAsRead, 
+        addNotification 
+      }}
     >
       {children}
     </NotificationsContext.Provider>
   );
-}
-
-export function useNotifications() {
-  const context = useContext(NotificationsContext);
-  if (!context) {
-    throw new Error('useNotifications must be used within a NotificationsProvider');
-  }
-  return context;
-}
+};

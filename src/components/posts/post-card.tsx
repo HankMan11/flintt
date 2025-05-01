@@ -1,130 +1,105 @@
+
 import { useState } from "react";
-import { Heart, MessageCircle, ThumbsDown, ThumbsUp, Flag, Ban } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
+import { formatDistanceToNow } from "date-fns";
 import { Post } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDistanceToNow } from "date-fns";
+import { Heart, MessageCircle, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { CommentList } from "./comment-list";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ReportDialog } from "@/components/report-dialog"; // Import ReportDialog
-
+import { useNotifications } from "@/contexts/NotificationsContext";
 
 interface PostCardProps {
   post: Post;
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const { currentUser, likePost, dislikePost, heartPost, addComment } = useApp();
+  const { currentUser, addComment, reactToPost, activeGroup } = useApp();
+  const { addNotification } = useNotifications();
   const [isCommenting, setIsCommenting] = useState(false);
-  const [comment, setComment] = useState("");
+  const [commentText, setCommentText] = useState("");
   const [showComments, setShowComments] = useState(false);
-  const [imageModalOpen, setImageModalOpen] = useState(false); // Added state for image modal
-  const [reportDialogOpen, setReportDialogOpen] = useState(false); // Added state for report dialog
 
-  if (!post || !post.user) {
-    return null; // Safely handle invalid posts
-  }
+  if (!currentUser) return null;
 
-  const handleLike = () => {
-    likePost(post.id);
+  const hasLiked = post.likes?.includes(currentUser.id);
+  const hasDisliked = post.dislikes?.includes(currentUser.id);
+  const hasHearted = post.hearts?.includes(currentUser.id);
+
+  const likesCount = post.likes?.length || 0;
+  const dislikesCount = post.dislikes?.length || 0;
+  const heartsCount = post.hearts?.length || 0;
+  const commentsCount = post.comments?.length || 0;
+
+  const handleReact = (reaction: "like" | "dislike" | "heart") => {
+    reactToPost(post.id, reaction);
+    
+    // Don't send notification if user reacts to their own post
+    if (post.user.id !== currentUser.id) {
+      const reactionText = reaction === "like" ? "liked" : reaction === "dislike" ? "disliked" : "loved";
+      
+      // Add notification for post owner
+      addNotification({
+        content: `${currentUser.name} ${reactionText} your post`,
+        type: 'reaction',
+        related_post_id: post.id,
+        actor_id: currentUser.id,
+        user_id: post.user.id
+      });
+    }
   };
 
-  const handleDislike = () => {
-    dislikePost(post.id);
-  };
+  const handleAddComment = () => {
+    if (!commentText.trim()) return;
 
-  const handleHeart = () => {
-    heartPost(post.id);
-  };
-
-  const handleSubmitComment = () => {
-    if (!comment.trim()) return;
-    addComment(post.id, comment);
-    setComment("");
+    addComment(post.id, commentText);
+    setCommentText("");
     setIsCommenting(false);
-    setShowComments(true);
+
+    // Don't send notification if user comments on their own post
+    if (post.user.id !== currentUser.id) {
+      // Add notification for post owner
+      addNotification({
+        content: `${currentUser.name} commented on your post`,
+        type: 'comment',
+        related_post_id: post.id,
+        actor_id: currentUser.id,
+        user_id: post.user.id
+      });
+    }
   };
 
-  const isLiked = currentUser && post.likes.includes(currentUser.id);
-  const isDisliked = currentUser && post.dislikes.includes(currentUser.id);
-  const isHearted = currentUser && post.hearts.includes(currentUser.id);
+  // Format timestamp with "Just now" for < 1 minute
+  const formatTimestamp = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return "Just now";
+    }
+    
+    return formatDistanceToNow(date, { addSuffix: true });
+  };
 
   return (
-    <Card className="mb-6 overflow-hidden">
-      <CardHeader className="flex-row items-center gap-4 space-y-0 p-4">
-        <Avatar className="h-10 w-10">
+    <Card className="mb-6">
+      <CardHeader className="flex flex-row items-center gap-4 p-4">
+        <Avatar>
           <AvatarImage src={post.user.avatar} alt={post.user.name} />
           <AvatarFallback>{post.user.name.charAt(0)}</AvatarFallback>
         </Avatar>
-        <div className="flex-1">
-          <div className="flex items-center justify-between w-full">
-            <p className="text-sm font-medium">{post.user.name}</p>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm">
-                  <Flag className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => setReportDialogOpen(true)}>
-                  <Flag className="h-4 w-4 mr-2" />
-                  Report Post
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  if (confirm("Are you sure you want to block this user?")) {
-                    // TODO: Implement block functionality
-                    alert("User blocked");
-                  }
-                }}>
-                  <Ban className="h-4 w-4 mr-2" />
-                  Block User
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <ReportDialog
-              open={reportDialogOpen}
-              onOpenChange={setReportDialogOpen}
-              type="post"
-              onReport={async (reason, details) => {
-                try {
-                  const { error } = await supabase
-                    .from('reports')
-                    .insert({
-                      type: 'post',
-                      reported_id: post.id,
-                      reporter_id: currentUser?.id,
-                      reason,
-                      details
-                    });
-                  
-                  if (error) throw error;
-                  alert("Report submitted successfully");
-                } catch (error) {
-                  console.error("Error submitting report:", error);
-                  alert("Failed to submit report");
-                }
-              }}
-            />
+        <div className="flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">{post.user.name}</span>
+            <span className="text-xs text-muted-foreground">
+              @{post.user.username}
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {(() => {
-              const now = new Date();
-              const createdAt = new Date(post.createdAt);
-              const diffInSeconds = Math.floor((now.getTime() - createdAt.getTime()) / 1000);
-
-              if (diffInSeconds < 60) {
-                return "Just now";
-              }
-              return formatDistanceToNow(createdAt, { addSuffix: true });
-            })()}
+            {formatTimestamp(new Date(post.createdAt))}
           </p>
         </div>
       </CardHeader>
@@ -132,130 +107,108 @@ export function PostCard({ post }: PostCardProps) {
         {post.mediaType === "image" ? (
           <img
             src={post.mediaUrl}
-            alt={post.caption || "Post image"}
-            className="aspect-video w-full object-cover cursor-pointer"
-            onClick={() => setImageModalOpen(true)} // Added onClick handler
+            alt="Post"
+            className="w-full object-cover max-h-[500px]"
           />
-        ) : (
+        ) : post.mediaType === "video" ? (
           <video
             src={post.mediaUrl}
             controls
-            className="aspect-video w-full object-cover"
+            className="w-full object-cover max-h-[500px]"
           />
-        )}
-        {post.caption && (
-          <div className="p-4 pt-3">
-            <p>{post.caption}</p>
-          </div>
-        )}
+        ) : null}
+        {post.caption && <p className="p-4">{post.caption}</p>}
       </CardContent>
-      <CardFooter className="flex flex-col items-start p-4">
-        <div className="flex w-full items-center justify-between">
-          <div className="flex space-x-4">
+      <CardFooter className="flex flex-col p-4 pt-0">
+        <div className="flex justify-between w-full">
+          <div className="flex gap-2">
             <Button
-              variant="ghost"
+              variant={hasLiked ? "default" : "ghost"}
               size="sm"
-              className={`flex items-center gap-1 ${isLiked ? "text-primary" : ""}`}
-              onClick={handleLike}
+              onClick={() => handleReact("like")}
+              className={hasLiked ? "bg-blue-500 hover:bg-blue-600" : ""}
             >
-              <ThumbsUp className="h-4 w-4" />
-              <span>{post.likes.length}</span>
+              <ThumbsUp className="h-4 w-4 mr-1" />
+              {likesCount > 0 && likesCount}
             </Button>
             <Button
-              variant="ghost"
+              variant={hasDisliked ? "default" : "ghost"}
               size="sm"
-              className={`flex items-center gap-1 ${isDisliked ? "text-primary" : ""}`}
-              onClick={handleDislike}
+              onClick={() => handleReact("dislike")}
+              className={hasDisliked ? "bg-red-500 hover:bg-red-600" : ""}
             >
-              <ThumbsDown className="h-4 w-4" />
-              <span>{post.dislikes.length}</span>
+              <ThumbsDown className="h-4 w-4 mr-1" />
+              {dislikesCount > 0 && dislikesCount}
             </Button>
             <Button
-              variant="ghost"
+              variant={hasHearted ? "default" : "ghost"}
               size="sm"
-              className={`flex items-center gap-1 ${isHearted ? "text-destructive" : ""}`}
-              onClick={handleHeart}
+              onClick={() => handleReact("heart")}
+              className={hasHearted ? "bg-pink-500 hover:bg-pink-600" : ""}
             >
-              <Heart className="h-4 w-4" />
-              <span>{post.hearts.length}</span>
+              <Heart className="h-4 w-4 mr-1" />
+              {heartsCount > 0 && heartsCount}
             </Button>
           </div>
+
           <Button
             variant="ghost"
             size="sm"
-            className="flex items-center gap-1"
             onClick={() => setShowComments(!showComments)}
           >
-            <MessageCircle className="h-4 w-4" />
-            <span>{post.comments.length}</span>
+            <MessageCircle className="h-4 w-4 mr-1" />
+            {commentsCount > 0 && (
+              <Badge variant="secondary" className="ml-1">
+                {commentsCount}
+              </Badge>
+            )}
+            <span className="ml-1">{showComments ? "Hide" : "Show"} comments</span>
           </Button>
         </div>
 
-        {showComments && post.comments.length > 0 && (
+        {isCommenting && (
+          <div className="mt-4 w-full">
+            <Textarea
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
+              placeholder="Write a comment..."
+              className="mb-2"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setIsCommenting(false);
+                  setCommentText("");
+                }}
+              >
+                <X className="h-4 w-4 mr-1" /> Cancel
+              </Button>
+              <Button size="sm" onClick={handleAddComment}>
+                Comment
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {!isCommenting && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2 w-full justify-center"
+            onClick={() => setIsCommenting(true)}
+          >
+            Write a comment...
+          </Button>
+        )}
+
+        {showComments && post.comments && post.comments.length > 0 && (
           <div className="mt-4 w-full">
             <CommentList comments={post.comments} postId={post.id} />
           </div>
         )}
-
-        {isCommenting ? (
-          <div className="mt-4 w-full">
-            <Textarea
-              placeholder="Write a comment..."
-              value={comment}
-              onChange={(e) => setComment(e.target.value)}
-              className="min-h-[80px]"
-            />
-            <div className="mt-2 flex justify-end gap-2">
-              <Button variant="ghost" onClick={() => setIsCommenting(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSubmitComment}>Post Comment</Button>
-            </div>
-          </div>
-        ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="mt-4"
-            onClick={() => setIsCommenting(true)}
-          >
-            Add a comment...
-          </Button>
-        )}
       </CardFooter>
-      <ImageModal // Added ImageModal component
-        imageUrl={post.mediaType === "image" ? post.mediaUrl : ""}
-        isOpen={imageModalOpen}
-        onClose={() => setImageModalOpen(false)}
-      />
     </Card>
-  );
-}
-
-
-function ImageModal({ imageUrl, isOpen, onClose }: { imageUrl: string; isOpen: boolean; onClose: () => void }) {
-  if (!isOpen) return null;
-
-  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.currentTarget === e.target) {
-      onClose();
-    }
-  };
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center"
-      onClick={handleOverlayClick}
-    >
-      <div className="relative max-w-md w-full bg-white rounded-lg shadow-lg">
-        <button
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
-          onClick={onClose}
-        >
-          &times;
-        </button>
-        <img src={imageUrl} alt="Full Image" className="w-full h-auto max-h-[80vh] object-contain" />
-      </div>
-    </div>
   );
 }

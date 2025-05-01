@@ -83,7 +83,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
           content: 'John liked your post',
           created_at: new Date().toISOString(),
           is_read: false,
-          type: 'reaction',
+          type: 'reaction' as NotificationType,
           related_post_id: '123',
           actor_id: '456',
           user_id: currentUser.id
@@ -93,7 +93,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
           content: 'Amy commented on your post',
           created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
           is_read: true,
-          type: 'comment',
+          type: 'comment' as NotificationType,
           related_post_id: '123',
           actor_id: '789',
           user_id: currentUser.id
@@ -103,7 +103,7 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
           content: 'New post in "Hiking Adventures" group',
           created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
           is_read: false,
-          type: 'new_post',
+          type: 'new_post' as NotificationType,
           related_post_id: '456',
           related_group_id: '111',
           actor_id: '222',
@@ -205,9 +205,10 @@ export const NotificationsProvider: React.FC<NotificationsProviderProps> = ({ ch
         id: `temp-${Date.now()}`,
         created_at: new Date().toISOString(),
         is_read: false,
+        type: notification.type as NotificationType
       };
       
-      setNotifications(prev => [newNotification, ...prev]);
+      setNotifications(prev => [newNotification, ...prev] as Notification[]);
       setUnreadCount(prev => prev + 1);
       
       toast({

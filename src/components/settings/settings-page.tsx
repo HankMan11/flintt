@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/contexts/AppContext";
@@ -57,7 +56,7 @@ export function SettingsPage() {
     });
   };
 
-  // Function to handle group clicks
+  // Function to handle group clicks - FIXED to properly navigate
   const handleGroupClick = (groupId) => {
     const group = groups.find(g => g.id === groupId);
     if (group) {

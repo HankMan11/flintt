@@ -1,84 +1,82 @@
 
-import { Link, useLocation } from "react-router-dom";
-import { Home, BarChart, Settings, Users } from "lucide-react";
+import { Home, Users, BarChart2, Settings, Plus } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import { useApp } from "@/contexts/AppContext";
 
 export function MobileNav() {
   const location = useLocation();
-  const { activeGroup } = useApp();
+  const navigate = useNavigate();
+  const currentPath = location.pathname;
 
-  const isGroupSelected = !!activeGroup;
-
-  const links = [
+  const navItems = [
     {
-      to: "/",
-      label: "Feed",
+      title: "Feed",
       icon: Home,
-      active: location.pathname === "/"
+      href: "/",
     },
     {
-      to: "/stats",
-      label: "Stats",
-      icon: BarChart,
-      active: location.pathname === "/stats",
-      disabled: !isGroupSelected
-    },
-    {
-      to: "/groups",
-      label: "Groups",
+      title: "Groups",
       icon: Users,
-      active: location.pathname === "/groups"
+      href: "/groups",
     },
     {
-      to: "/settings",
-      label: "Settings", 
+      title: "Create",
+      icon: Plus,
+      href: "/create",
+      special: true,
+    },
+    {
+      title: "Stats",
+      icon: BarChart2,
+      href: "/stats",
+    },
+    {
+      title: "Settings",
       icon: Settings,
-      active: location.pathname === "/settings"
-    }
+      href: "/settings",
+    },
   ];
 
+  const handleClick = (href: string, special?: boolean) => {
+    if (special) {
+      // Handle post creation - scroll to create post section
+      navigate("/");
+      setTimeout(() => {
+        const createPostElement = document.getElementById("create-post");
+        if (createPostElement) {
+          createPostElement.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 100);
+    } else {
+      navigate(href);
+    }
+  };
+
   return (
-    <div className="fixed bottom-0 left-0 z-50 w-full border-t bg-background md:hidden">
-      <div className="flex h-16 items-center justify-around">
-        {links.map((link) => (
-          <NavItem
-            key={link.to}
-            to={link.to}
-            label={link.label}
-            icon={link.icon}
-            active={link.active}
-            disabled={link.disabled}
-          />
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background md:hidden">
+      <nav className="grid h-16 grid-cols-5 items-center">
+        {navItems.map((item) => (
+          <button
+            key={item.title}
+            className={cn(
+              "flex flex-col items-center justify-center gap-1 text-xs",
+              currentPath === item.href
+                ? "text-primary"
+                : "text-muted-foreground"
+            )}
+            onClick={() => handleClick(item.href, item.special)}
+          >
+            {item.special ? (
+              <div className="-mt-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <item.icon className="h-6 w-6" />
+              </div>
+            ) : (
+              <item.icon className="h-5 w-5" />
+            )}
+            <span>{item.title}</span>
+          </button>
         ))}
-      </div>
+      </nav>
     </div>
-  );
-}
-
-interface NavItemProps {
-  to: string;
-  label: string;
-  icon: React.ElementType;
-  active: boolean;
-  disabled?: boolean;
-}
-
-function NavItem({ to, label, icon: Icon, active, disabled }: NavItemProps) {
-  return (
-    <Link
-      to={disabled ? "#" : to}
-      className={cn(
-        "flex flex-col items-center justify-center w-full h-full",
-        active ? "text-primary" : "text-muted-foreground",
-        disabled ? "opacity-50 pointer-events-none" : "hover:text-primary"
-      )}
-      onClick={(e) => {
-        if (disabled) e.preventDefault();
-      }}
-    >
-      <Icon className="h-5 w-5" />
-      <span className="text-xs mt-1">{label}</span>
-    </Link>
   );
 }

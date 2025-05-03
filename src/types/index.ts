@@ -15,6 +15,7 @@ export interface Group {
   createdAt: string;
   description?: string;
   inviteCode?: string;
+  isPinned?: boolean;
 }
 
 export interface Comment {
@@ -37,6 +38,7 @@ export interface Post {
   dislikes: string[];
   hearts: string[];
   comments: Comment[];
+  isPinned?: boolean;
 }
 
 export interface Stats {
@@ -69,5 +71,35 @@ export interface Stats {
     hearts: number;
     uploads: number;
     comments: number;
+    streak?: number;
   };
+}
+
+export interface WeeklyStats {
+  startDate: string;
+  endDate: string;
+  mostPosts: {
+    user: User;
+    count: number;
+  }[];
+  mostLikes: {
+    user: User;
+    count: number;
+  }[];
+  mostReactions: {
+    user: User;
+    count: number;
+  }[];
+  groupId: string;
+}
+
+export interface Notification {
+  id: string;
+  type: string;
+  content: string;
+  isRead: boolean;
+  createdAt: string;
+  relatedPostId?: string;
+  relatedGroupId?: string;
+  actorId?: string;
 }

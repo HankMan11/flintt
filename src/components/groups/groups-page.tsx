@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, UserPlus, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Search, UserPlus, Loader2, RefreshCw, Copy, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { GroupImageUpload } from "./group-image-upload";
 
 export function GroupsPage() {
   const { groups, createGroup, joinGroup, setActiveGroup, loadingGroups, fetchGroups } = useApp();
@@ -24,6 +25,7 @@ export function GroupsPage() {
   const [joinError, setJoinError] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [copiedCodes, setCopiedCodes] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   const navigate = useNavigate();
@@ -61,10 +63,7 @@ export function GroupsPage() {
     setIsCreating(true);
     
     try {
-      // For demo purposes, if no icon provided, use a random one
-      const icon = newGroupIcon || `https://source.unsplash.com/random/100x100/?${newGroupName.toLowerCase()}`;
-      
-      const newGroup = await createGroup(newGroupName, icon, newGroupDescription);
+      const newGroup = await createGroup(newGroupName, newGroupIcon, newGroupDescription);
       
       if (newGroup) {
         toast({
@@ -132,6 +131,21 @@ export function GroupsPage() {
       setIsJoining(false);
     }
   };
+  
+  const handleCopyInviteCode = (code: string, groupId: string) => {
+    navigator.clipboard.writeText(code);
+    setCopiedCodes({ ...copiedCodes, [groupId]: true });
+    
+    toast({
+      title: "Copied!",
+      description: "Invite code copied to clipboard",
+    });
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setCopiedCodes(prev => ({ ...prev, [groupId]: false }));
+    }, 2000);
+  };
 
   const filteredGroups = groups.filter(group => 
     group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -167,6 +181,10 @@ export function GroupsPage() {
                 <DialogTitle>Create a new group</DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
+                <GroupImageUpload 
+                  onImageUploaded={(url) => setNewGroupIcon(url)} 
+                />
+                
                 <div className="grid gap-2">
                   <Label htmlFor="name">Group Name</Label>
                   <Input
@@ -175,14 +193,7 @@ export function GroupsPage() {
                     onChange={(e) => setNewGroupName(e.target.value)}
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="icon">Group Icon URL (optional)</Label>
-                  <Input
-                    id="icon"
-                    value={newGroupIcon}
-                    onChange={(e) => setNewGroupIcon(e.target.value)}
-                  />
-                </div>
+                
                 <div className="grid gap-2">
                   <Label htmlFor="description">Description (optional)</Label>
                   <Input
@@ -294,6 +305,26 @@ export function GroupsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-4 pt-0">
+                <div className="mb-4">
+                  <Label htmlFor={`invite-${group.id}`} className="text-xs">Invite Code</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      id={`invite-${group.id}`}
+                      value={group.inviteCode || ""}
+                      readOnly
+                      className="text-xs h-8"
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleCopyInviteCode(group.inviteCode || "", group.id)}
+                    >
+                      {copiedCodes[group.id] ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                
                 <div className="flex justify-between items-center">
                   <div className="flex -space-x-2">
                     {group.members.slice(0, 3).map(member => (

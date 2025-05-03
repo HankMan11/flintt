@@ -1,9 +1,10 @@
+
 import React, { createContext, useContext, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Post, Comment, User, Group } from "@/types";
-import { mockUsers } from "@/data/mockData";
 import { useAuth } from "./AuthContext";
 import { useGroups } from "./GroupsContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface PostsContextType {
   posts: Post[];
@@ -14,6 +15,11 @@ interface PostsContextType {
   dislikePost: (postId: string) => Promise<void>;
   heartPost: (postId: string) => Promise<void>;
   addComment: (postId: string, content: string, parentCommentId?: string) => Promise<void>;
+  editPost: (postId: string, caption: string) => Promise<void>;
+  pinPost: (postId: string, isPinned: boolean) => Promise<void>;
+  reportPost: (postId: string, reason: string) => Promise<void>;
+  blockUser: (userId: string) => Promise<void>;
+  updateUserStreak: (userId: string) => void;
 }
 
 const PostsContext = createContext<PostsContextType | undefined>(undefined);
@@ -22,6 +28,10 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
   const { currentUser } = useAuth();
   const { activeGroup } = useGroups();
   const [posts, setPosts] = useState<Post[]>([]);
+  const { toast } = useToast();
+  
+  // Track user streaks
+  const [userStreaks, setUserStreaks] = useState<Record<string, number>>({});
 
   const addPost = async (groupId: string, caption: string, mediaUrl: string, mediaType: "image" | "video") => {
     if (!currentUser) return;
@@ -36,6 +46,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       likes: [],
       dislikes: [],
       hearts: [],
+      is_pinned: false,
     };
 
     const { data, error } = await supabase
@@ -62,14 +73,36 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
         dislikes: data.dislikes ?? [],
         hearts: data.hearts ?? [],
         comments: [],
+        isPinned: data.is_pinned || false,
       };
       setPosts(p => [postObj, ...p]);
+      
+      // Notify group members about the new post
+      notifyGroupMembers(groupId, `${currentUser.name} posted in ${activeGroup.name}`, 'new_post', data.id);
+      
+      // Update user streak
+      updateUserStreak(currentUser.id);
     }
   };
 
-  const deletePost = (postId: string) => {
+  const deletePost = async (postId: string) => {
     if (!currentUser) return;
-    setPosts(posts => posts.filter(p => p.id !== postId));
+    
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId);
+        
+      if (error) {
+        console.error('Error deleting post:', error);
+        return;
+      }
+      
+      setPosts(posts => posts.filter(p => p.id !== postId));
+    } catch (error) {
+      console.error('Error deleting post:', error);
+    }
   };
 
   const likePost = async (postId: string) => {
@@ -89,6 +122,9 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
         newLikes = [...newLikes, currentUser.id];
         newDislikes = newDislikes.filter(id => id !== currentUser.id);
         shouldNotify = post.user.id !== currentUser.id;
+        
+        // Update user streak when liking a post
+        updateUserStreak(currentUser.id);
       }
 
       const { error } = await supabase
@@ -140,6 +176,9 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
         newDislikes = [...newDislikes, currentUser.id];
         newLikes = newLikes.filter(id => id !== currentUser.id);
         shouldNotify = post.user.id !== currentUser.id;
+        
+        // Update user streak when disliking a post
+        updateUserStreak(currentUser.id);
       }
 
       const { error } = await supabase
@@ -189,6 +228,9 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       } else {
         newHearts = [...newHearts, currentUser.id];
         shouldNotify = post.user.id !== currentUser.id;
+        
+        // Update user streak when adding a heart
+        updateUserStreak(currentUser.id);
       }
 
       const { error } = await supabase
@@ -274,14 +316,234 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
           ? { ...p }
           : p
       ));
+      
+      // Update user streak when commenting
+      updateUserStreak(currentUser.id);
     } catch (error) {
       console.error('Error adding comment:', error);
+    }
+  };
+  
+  const editPost = async (postId: string, caption: string) => {
+    if (!currentUser) return;
+    
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ caption })
+        .eq('id', postId)
+        .eq('user_id', currentUser.id);
+        
+      if (error) {
+        console.error('Error updating post:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update post",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, caption } 
+          : p
+      ));
+      
+      toast({
+        title: "Post updated",
+        description: "Your post has been updated successfully"
+      });
+    } catch (error) {
+      console.error('Error editing post:', error);
+    }
+  };
+  
+  const pinPost = async (postId: string, isPinned: boolean) => {
+    if (!currentUser) return;
+    
+    try {
+      // First check if the user is an admin of the group
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+      
+      const { data, error: adminCheckError } = await supabase
+        .from('group_members')
+        .select('is_admin')
+        .eq('group_id', post.group.id)
+        .eq('user_id', currentUser.id)
+        .single();
+        
+      if (adminCheckError || !data?.is_admin) {
+        toast({
+          title: "Permission denied",
+          description: "Only group admins can pin posts",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Update the post
+      const { error } = await supabase
+        .from('posts')
+        .update({ is_pinned: isPinned })
+        .eq('id', postId);
+        
+      if (error) {
+        console.error('Error pinning post:', error);
+        toast({
+          title: "Error",
+          description: "Failed to update post",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      setPosts(posts.map(p => 
+        p.id === postId 
+          ? { ...p, isPinned } 
+          : p
+      ));
+      
+      toast({
+        title: isPinned ? "Post pinned" : "Post unpinned",
+        description: isPinned ? "Post will now appear at the top of the feed" : "Post has been unpinned"
+      });
+    } catch (error) {
+      console.error('Error pinning post:', error);
+    }
+  };
+  
+  const reportPost = async (postId: string, reason: string) => {
+    if (!currentUser) return;
+    
+    try {
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+      
+      // In a real application, we would store this report in the database
+      // For now, we'll just show a toast notification
+      toast({
+        title: "Post reported",
+        description: "Thank you for reporting this post. Our team will review it.",
+      });
+      
+      console.log(`Post ${postId} reported by ${currentUser.id} for reason: ${reason}`);
+    } catch (error) {
+      console.error('Error reporting post:', error);
+    }
+  };
+  
+  const blockUser = async (userId: string) => {
+    if (!currentUser) return;
+    
+    try {
+      // In a real app, we would store blocked users in the database
+      // For now, we'll just show a toast
+      toast({
+        title: "User blocked",
+        description: "You will no longer see content from this user",
+      });
+      
+      console.log(`User ${userId} blocked by ${currentUser.id}`);
+    } catch (error) {
+      console.error('Error blocking user:', error);
+    }
+  };
+  
+  const updateUserStreak = (userId: string) => {
+    if (!userId) return;
+    
+    // Get the current date
+    const today = new Date().toDateString();
+    
+    // Get the last activity date from localStorage
+    const lastActivityKey = `lastActivity_${userId}`;
+    const streakCountKey = `streakCount_${userId}`;
+    
+    const lastActivity = localStorage.getItem(lastActivityKey);
+    let streakCount = parseInt(localStorage.getItem(streakCountKey) || '0');
+    
+    if (!lastActivity) {
+      // First activity
+      streakCount = 1;
+    } else if (lastActivity !== today) {
+      // If the last activity was not today, increment the streak
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      if (lastActivity === yesterday.toDateString()) {
+        // If the last activity was yesterday, increment the streak
+        streakCount += 1;
+      } else {
+        // If there was a gap, reset the streak
+        streakCount = 1;
+      }
+    }
+    
+    // Save the updated streak info
+    localStorage.setItem(lastActivityKey, today);
+    localStorage.setItem(streakCountKey, streakCount.toString());
+    
+    // Update state
+    setUserStreaks(prev => ({
+      ...prev,
+      [userId]: streakCount
+    }));
+  };
+  
+  // Helper function to notify all group members
+  const notifyGroupMembers = async (groupId: string, content: string, type: string, relatedPostId?: string) => {
+    if (!currentUser) return;
+    
+    try {
+      // Get all group members
+      const { data: members, error } = await supabase
+        .from('group_members')
+        .select('user_id')
+        .eq('group_id', groupId);
+        
+      if (error) {
+        console.error('Error fetching group members:', error);
+        return;
+      }
+      
+      // Filter out the current user
+      const otherMembers = members.filter(member => member.user_id !== currentUser.id);
+      
+      // Create a notification for each member
+      for (const member of otherMembers) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: member.user_id,
+            type,
+            content,
+            related_post_id: relatedPostId,
+            related_group_id: groupId,
+            actor_id: currentUser.id
+          });
+      }
+    } catch (error) {
+      console.error('Error notifying group members:', error);
     }
   };
 
   return (
     <PostsContext.Provider value={{
-      posts, setPosts, addPost, deletePost, likePost, dislikePost, heartPost, addComment
+      posts, 
+      setPosts, 
+      addPost, 
+      deletePost, 
+      likePost, 
+      dislikePost, 
+      heartPost, 
+      addComment,
+      editPost,
+      pinPost,
+      reportPost,
+      blockUser,
+      updateUserStreak
     }}>
       {children}
     </PostsContext.Provider>

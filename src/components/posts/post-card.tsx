@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Heart, MessageCircle, ThumbsDown, ThumbsUp } from "lucide-react";
+import { Heart, MessageCircle, ThumbsDown, ThumbsUp, Edit, Trash2, Pin } from "lucide-react";
 import { useApp } from "@/contexts/AppContext";
 import { Post } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,16 +9,22 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea";
 import { formatDistanceToNow } from "date-fns";
 import { CommentList } from "./comment-list";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface PostCardProps {
   post: Post;
 }
 
 export function PostCard({ post }: PostCardProps) {
-  const { currentUser, likePost, dislikePost, heartPost, addComment } = useApp();
+  const { currentUser, likePost, dislikePost, heartPost, addComment, deletePost } = useApp();
   const [isCommenting, setIsCommenting] = useState(false);
   const [comment, setComment] = useState("");
   const [showComments, setShowComments] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedCaption, setEditedCaption] = useState(post.caption || "");
+  const [fullScreenImage, setFullScreenImage] = useState(false);
+  const { toast } = useToast();
 
   if (!post || !post.user) {
     return null; // Safely handle invalid posts
@@ -44,9 +50,29 @@ export function PostCard({ post }: PostCardProps) {
     setShowComments(true);
   };
 
+  const handleDeletePost = () => {
+    deletePost(post.id);
+    toast({
+      title: "Post deleted",
+      description: "Your post has been successfully deleted",
+    });
+  };
+
+  const formatTimestamp = (date: string) => {
+    const now = new Date();
+    const postDate = new Date(date);
+    const diffInSeconds = Math.floor((now.getTime() - postDate.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return "Just now";
+    }
+    return formatDistanceToNow(postDate, { addSuffix: true });
+  };
+
   const isLiked = currentUser && post.likes.includes(currentUser.id);
   const isDisliked = currentUser && post.dislikes.includes(currentUser.id);
   const isHearted = currentUser && post.hearts.includes(currentUser.id);
+  const isOwnPost = currentUser && post.user.id === currentUser.id;
 
   return (
     <Card className="mb-6 overflow-hidden">
@@ -60,9 +86,29 @@ export function PostCard({ post }: PostCardProps) {
             <div>
               <p className="text-sm font-medium">{post.user.name}</p>
               <p className="text-xs text-muted-foreground">
-                {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
+                {formatTimestamp(post.createdAt)}
               </p>
             </div>
+            {isOwnPost && (
+              <div className="flex gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive"
+                  onClick={handleDeletePost}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -71,7 +117,8 @@ export function PostCard({ post }: PostCardProps) {
           <img 
             src={post.mediaUrl} 
             alt={post.caption || "Post image"} 
-            className="aspect-video w-full object-cover"
+            className="aspect-video w-full object-cover cursor-pointer"
+            onClick={() => setFullScreenImage(true)}
           />
         ) : (
           <video 
@@ -160,6 +207,26 @@ export function PostCard({ post }: PostCardProps) {
           </Button>
         )}
       </CardFooter>
+
+      {/* Full screen image dialog */}
+      <Dialog open={fullScreenImage} onOpenChange={setFullScreenImage}>
+        <DialogContent className="max-w-screen-lg p-0 overflow-hidden">
+          <div className="relative">
+            <img 
+              src={post.mediaUrl} 
+              alt={post.caption || "Post image"} 
+              className="w-full h-auto"
+            />
+            <Button 
+              className="absolute top-2 right-2" 
+              variant="outline"
+              onClick={() => setFullScreenImage(false)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

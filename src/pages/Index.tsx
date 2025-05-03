@@ -8,16 +8,16 @@ import { Feed } from "@/components/posts/feed";
 import { StatsPage } from "@/components/stats/stats-page";
 import { SettingsPage } from "@/components/settings/settings-page";
 import { GroupsPage } from "@/components/groups/groups-page";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { useSupabaseAuth } from "@/hooks/useSupabaseAuth";
-import { useNavigate } from "react-router-dom";
 import { GroupSettingsPage } from "@/components/groups/group-settings-page";
 import { Toaster } from "@/components/ui/toaster";
 
 const Index = () => {
   const { user, loading } = useSupabaseAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {

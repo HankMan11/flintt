@@ -1,5 +1,6 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useApp } from "@/contexts/AppContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,9 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { PostCard } from "../posts/post-card";
+import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "next-themes";
 
 export function SettingsPage() {
-  const { currentUser, getSavedPosts } = useApp();
+  const { currentUser, getSavedPosts, setActiveGroup, groups } = useApp();
+  const navigate = useNavigate();
   const [profileForm, setProfileForm] = useState({
     name: currentUser?.name || "",
     username: currentUser?.username || "",
@@ -20,16 +24,47 @@ export function SettingsPage() {
     bio: "Photography enthusiast and foodie"
   });
 
+  const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+
   const [preferences, setPreferences] = useState({
     hideStats: false,
     allowComments: true,
     notifications: true,
-    darkMode: false
+    darkMode: theme === "dark"
   });
+
+  // Effect to handle theme changes when toggle is used
+  useEffect(() => {
+    setTheme(preferences.darkMode ? "dark" : "light");
+  }, [preferences.darkMode, setTheme]);
 
   const savedPosts = getSavedPosts();
 
   if (!currentUser) return null;
+
+  const handleSaveProfile = () => {
+    toast({
+      title: "Profile updated",
+      description: "Your profile information has been saved",
+    });
+  };
+
+  const handleSavePreferences = () => {
+    toast({
+      title: "Preferences updated",
+      description: "Your preferences have been saved",
+    });
+  };
+
+  // Function to handle group clicks
+  const handleGroupClick = (groupId) => {
+    const group = groups.find(g => g.id === groupId);
+    if (group) {
+      setActiveGroup(group);
+      navigate("/"); // Navigate to the main feed
+    }
+  };
 
   return (
     <div className="px-4 py-6 md:px-6 lg:px-8">
@@ -109,7 +144,7 @@ export function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="ml-auto">Save Changes</Button>
+              <Button className="ml-auto" onClick={handleSaveProfile}>Save Changes</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -184,7 +219,7 @@ export function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button className="ml-auto">Save Preferences</Button>
+              <Button className="ml-auto" onClick={handleSavePreferences}>Save Preferences</Button>
             </CardFooter>
           </Card>
         </TabsContent>
@@ -214,6 +249,39 @@ export function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add a groups section to allow navigation back */}
+      <div className="mt-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Your Groups</CardTitle>
+            <CardDescription>Quick access to your groups</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {groups.map((group) => (
+                <button
+                  key={group.id}
+                  onClick={() => handleGroupClick(group.id)}
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all hover:bg-muted"
+                >
+                  <img
+                    src={group.icon}
+                    alt={group.name}
+                    className="h-10 w-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <span className="font-medium">{group.name}</span>
+                    <span className="text-xs block text-muted-foreground">
+                      {group.members.length} {group.members.length === 1 ? "member" : "members"}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

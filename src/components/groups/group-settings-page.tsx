@@ -46,7 +46,7 @@ export function GroupSettingsPage() {
     try {
       const { data, error } = await supabase
         .from('group_members')
-        .select('is_admin')
+        .select('*') // Use select * to get all columns including the newly added is_admin
         .eq('group_id', activeGroup.id)
         .eq('user_id', currentUser.id)
         .single();
@@ -193,6 +193,7 @@ export function GroupSettingsPage() {
     setRoleUpdating(true);
     
     try {
+      // Update the is_admin field that we've just added in our SQL migration
       const { error } = await supabase
         .from('group_members')
         .update({ is_admin: !currentIsAdmin })

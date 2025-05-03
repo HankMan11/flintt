@@ -46,7 +46,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       likes: [],
       dislikes: [],
       hearts: [],
-      is_pinned: false,
+      is_pinned: false, // We've added this column in our SQL migration
     };
 
     const { data, error } = await supabase
@@ -369,7 +369,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
       
       const { data, error: adminCheckError } = await supabase
         .from('group_members')
-        .select('is_admin')
+        .select('*') // Use select * to get all columns including the newly added is_admin
         .eq('group_id', post.group.id)
         .eq('user_id', currentUser.id)
         .single();
@@ -383,7 +383,7 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
         return;
       }
       
-      // Update the post
+      // Update the post - use is_pinned which we've added in our SQL migration
       const { error } = await supabase
         .from('posts')
         .update({ is_pinned: isPinned })

@@ -11,8 +11,13 @@ export const usePostExtensions = (currentUser: User | null, posts: Post[]) => {
     return posts.filter(post => post.hearts.includes(currentUser.id));
   };
 
+  const getPinnedPosts = (groupId?: string) => {
+    return posts.filter(post => post.isPinned && (!groupId || post.group?.id === groupId));
+  };
+
   return {
     filterGroupPosts,
-    getSavedPosts
+    getSavedPosts,
+    getPinnedPosts
   };
 };

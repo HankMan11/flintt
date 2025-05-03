@@ -12,16 +12,19 @@ export type Database = {
       group_members: {
         Row: {
           group_id: string
+          is_admin: boolean | null
           joined_at: string
           user_id: string
         }
         Insert: {
           group_id: string
+          is_admin?: boolean | null
           joined_at?: string
           user_id: string
         }
         Update: {
           group_id?: string
+          is_admin?: boolean | null
           joined_at?: string
           user_id?: string
         }
@@ -128,6 +131,7 @@ export type Database = {
           group_id: string
           hearts: string[] | null
           id: string
+          is_pinned: boolean | null
           likes: string[] | null
           media_type: string
           media_url: string
@@ -140,6 +144,7 @@ export type Database = {
           group_id: string
           hearts?: string[] | null
           id?: string
+          is_pinned?: boolean | null
           likes?: string[] | null
           media_type: string
           media_url: string
@@ -152,6 +157,7 @@ export type Database = {
           group_id?: string
           hearts?: string[] | null
           id?: string
+          is_pinned?: boolean | null
           likes?: string[] | null
           media_type?: string
           media_url?: string

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useState, useMemo, useEffect } from "react";
 import { format, startOfWeek, endOfWeek } from "date-fns";
-import { WeeklyStats } from "@/types";
+import { WeeklyStats, User } from "@/types";
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area";
 

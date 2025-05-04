@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "@/contexts/AppContext";
@@ -14,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "next-themes";
 
 export function SettingsPage() {
-  const { currentUser, getSavedPosts, setActiveGroup, groups } = useApp();
+  const { currentUser, getSavedPosts } = useApp();
   const navigate = useNavigate();
   const [profileForm, setProfileForm] = useState({
     name: currentUser?.name || "",
@@ -54,15 +55,6 @@ export function SettingsPage() {
       title: "Preferences updated",
       description: "Your preferences have been saved",
     });
-  };
-
-  // Function to handle group clicks - FIXED to properly navigate
-  const handleGroupClick = (groupId) => {
-    const group = groups.find(g => g.id === groupId);
-    if (group) {
-      setActiveGroup(group);
-      navigate("/"); // Navigate to the main feed
-    }
   };
 
   return (
@@ -248,39 +240,6 @@ export function SettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Add a groups section to allow navigation back */}
-      <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Groups</CardTitle>
-            <CardDescription>Quick access to your groups</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {groups.map((group) => (
-                <button
-                  key={group.id}
-                  onClick={() => handleGroupClick(group.id)}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-all hover:bg-muted"
-                >
-                  <img
-                    src={group.icon}
-                    alt={group.name}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                  <div>
-                    <span className="font-medium">{group.name}</span>
-                    <span className="text-xs block text-muted-foreground">
-                      {group.members.length} {group.members.length === 1 ? "member" : "members"}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

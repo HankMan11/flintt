@@ -77,14 +77,19 @@ export function CreatePost() {
     setIsUploading(true);
 
     try {
-      // Check if the bucket exists first
+      // Create posts bucket if it doesn't exist
       const { data: buckets } = await supabase.storage.listBuckets();
       
       if (!buckets?.some(bucket => bucket.name === 'posts')) {
-        // Create bucket if it doesn't exist
-        await supabase.storage.createBucket('posts', {
-          public: true
-        });
+        try {
+          await supabase.storage.createBucket('posts', {
+            public: true
+          });
+          console.log("Created 'posts' bucket");
+        } catch (err) {
+          console.error("Error creating bucket:", err);
+          // Continue anyway, as the bucket might already exist with different permissions
+        }
       }
       
       // Upload file to Supabase Storage
@@ -92,17 +97,22 @@ export function CreatePost() {
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data: uploadData } = await supabase.storage
         .from('posts')
         .upload(filePath, selectedMedia);
 
       if (uploadError) {
+        console.error("Upload error:", uploadError);
         throw uploadError;
       }
 
       const { data } = supabase.storage
         .from('posts')
         .getPublicUrl(filePath);
+
+      if (!data.publicUrl) {
+        throw new Error("Failed to get public URL");
+      }
 
       // Create post with the file URL
       await addPost(activeGroup.id, caption, data.publicUrl, mediaType);
@@ -118,7 +128,7 @@ export function CreatePost() {
       console.error("Error creating post:", error);
       toast({
         title: "Error",
-        description: "Failed to create post",
+        description: "Failed to create post. Please check console for details.",
         variant: "destructive",
       });
     } finally {

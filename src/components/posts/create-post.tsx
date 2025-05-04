@@ -65,6 +65,15 @@ export function CreatePost() {
   };
 
   const handleSubmit = async () => {
+    if (!caption.trim()) {
+      toast({
+        title: "Caption required",
+        description: "Please add a caption to your post",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (!selectedMedia) {
       toast({
         title: "No media selected",
@@ -77,18 +86,30 @@ export function CreatePost() {
     setIsUploading(true);
 
     try {
-      // Create posts bucket if it doesn't exist
-      const { data: buckets } = await supabase.storage.listBuckets();
+      // First check if the posts bucket exists
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
       
+      if (bucketsError) {
+        console.error("Error checking buckets:", bucketsError);
+        throw new Error("Could not check storage buckets");
+      }
+      
+      // Create bucket if it doesn't exist
       if (!buckets?.some(bucket => bucket.name === 'posts')) {
         try {
-          await supabase.storage.createBucket('posts', {
+          const { error: createBucketError } = await supabase.storage.createBucket('posts', {
             public: true
           });
-          console.log("Created 'posts' bucket");
+          
+          if (createBucketError) {
+            console.error("Error creating bucket:", createBucketError);
+            // We'll continue anyway as the bucket might exist with different permissions
+          } else {
+            console.log("Created 'posts' bucket successfully");
+          }
         } catch (err) {
-          console.error("Error creating bucket:", err);
-          // Continue anyway, as the bucket might already exist with different permissions
+          console.error("Exception when creating bucket:", err);
+          // Continue anyway
         }
       }
       
@@ -103,19 +124,19 @@ export function CreatePost() {
 
       if (uploadError) {
         console.error("Upload error:", uploadError);
-        throw uploadError;
+        throw new Error(`Failed to upload: ${uploadError.message}`);
       }
 
-      const { data } = supabase.storage
+      const { data: urlData } = supabase.storage
         .from('posts')
         .getPublicUrl(filePath);
 
-      if (!data.publicUrl) {
+      if (!urlData.publicUrl) {
         throw new Error("Failed to get public URL");
       }
 
       // Create post with the file URL
-      await addPost(activeGroup.id, caption, data.publicUrl, mediaType);
+      await addPost(activeGroup.id, caption, urlData.publicUrl, mediaType);
 
       // Reset form
       setCaption("");
@@ -128,7 +149,7 @@ export function CreatePost() {
       console.error("Error creating post:", error);
       toast({
         title: "Error",
-        description: "Failed to create post. Please check console for details.",
+        description: error instanceof Error ? error.message : "Failed to create post. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -216,7 +237,7 @@ export function CreatePost() {
           </div>
           <Button
             onClick={handleSubmit}
-            disabled={!selectedMedia || isUploading}
+            disabled={!caption.trim() || !selectedMedia || isUploading}
           >
             {isUploading ? (
               <>

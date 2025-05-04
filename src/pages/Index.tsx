@@ -42,6 +42,7 @@ const Index = () => {
     );
   }
 
+  // Always show the sidebar, even in settings and other pages
   return (
     <ThemeProvider defaultTheme="light" storageKey="group-glow-theme">
       <AppProvider>

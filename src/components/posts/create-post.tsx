@@ -1,5 +1,5 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useApp } from "@/contexts/AppContext";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,8 +16,68 @@ export function CreatePost() {
   const [selectedMedia, setSelectedMedia] = useState<File | null>(null);
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [bucketReady, setBucketReady] = useState(false);
+  const [isBucketChecking, setIsBucketChecking] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  // Verify and create bucket on component mount
+  useEffect(() => {
+    async function ensurePostsBucket() {
+      setIsBucketChecking(true);
+      try {
+        // Check if posts bucket exists
+        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+        
+        if (bucketsError) {
+          console.error("Error checking buckets:", bucketsError);
+          toast({
+            title: "Storage Error",
+            description: "Unable to check storage buckets. Please try again later.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        const postsBucketExists = buckets?.some(bucket => bucket.name === 'posts');
+        
+        if (!postsBucketExists) {
+          // Create bucket with public access
+          const { error: createError } = await supabase.storage.createBucket('posts', {
+            public: true,
+            fileSizeLimit: 10 * 1024 * 1024 // 10MB limit
+          });
+          
+          if (createError) {
+            console.error("Error creating posts bucket:", createError);
+            toast({
+              title: "Storage Setup Failed",
+              description: "Failed to set up storage for posts. Please contact support.",
+              variant: "destructive",
+            });
+            return;
+          }
+          
+          console.log("Posts bucket created successfully");
+        }
+        
+        setBucketReady(true);
+      } catch (error) {
+        console.error("Error ensuring posts bucket exists:", error);
+        toast({
+          title: "Storage Error",
+          description: "Failed to set up storage. Please try again later.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsBucketChecking(false);
+      }
+    }
+    
+    if (currentUser && activeGroup) {
+      ensurePostsBucket();
+    }
+  }, [currentUser, activeGroup, toast]);
 
   if (!currentUser || !activeGroup) return null;
 
@@ -83,36 +143,18 @@ export function CreatePost() {
       return;
     }
 
+    if (!bucketReady) {
+      toast({
+        title: "Storage not ready",
+        description: "Please wait while we set up storage for your post",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsUploading(true);
 
     try {
-      // First check if the posts bucket exists
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error("Error checking buckets:", bucketsError);
-        throw new Error("Could not check storage buckets");
-      }
-      
-      // Create bucket if it doesn't exist
-      if (!buckets?.some(bucket => bucket.name === 'posts')) {
-        try {
-          const { error: createBucketError } = await supabase.storage.createBucket('posts', {
-            public: true
-          });
-          
-          if (createBucketError) {
-            console.error("Error creating bucket:", createBucketError);
-            // We'll continue anyway as the bucket might exist with different permissions
-          } else {
-            console.log("Created 'posts' bucket successfully");
-          }
-        } catch (err) {
-          console.error("Exception when creating bucket:", err);
-          // Continue anyway
-        }
-      }
-      
       // Upload file to Supabase Storage
       const fileExt = selectedMedia.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
@@ -212,7 +254,7 @@ export function CreatePost() {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={isUploading || isBucketChecking}
             >
               <Image className="mr-2 h-4 w-4" />
               Image
@@ -222,7 +264,7 @@ export function CreatePost() {
               variant="outline"
               size="sm"
               onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
+              disabled={isUploading || isBucketChecking}
             >
               <FilmIcon className="mr-2 h-4 w-4" />
               Video
@@ -237,12 +279,17 @@ export function CreatePost() {
           </div>
           <Button
             onClick={handleSubmit}
-            disabled={!caption.trim() || !selectedMedia || isUploading}
+            disabled={!caption.trim() || !selectedMedia || isUploading || isBucketChecking || !bucketReady}
           >
             {isUploading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Posting...
+              </>
+            ) : isBucketChecking ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Preparing...
               </>
             ) : (
               "Post"

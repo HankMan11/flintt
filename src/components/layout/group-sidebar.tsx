@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export function GroupSidebar() {
   const { groups, activeGroup, setActiveGroup, createGroup, joinGroup, loadingGroups, fetchGroups } = useApp();
@@ -23,6 +24,8 @@ export function GroupSidebar() {
   const [isJoining, setIsJoining] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   // Load groups on component mount if not already loading
   useEffect(() => {
@@ -129,6 +132,14 @@ export function GroupSidebar() {
     }
   };
 
+  const handleGroupClick = (group: Group) => {
+    setActiveGroup(group);
+    // If we're on settings or any other page, navigate back to home
+    if (location.pathname !== "/") {
+      navigate("/");
+    }
+  };
+
   return (
     <div className="hidden w-72 flex-col border-r bg-background md:flex">
       <div className="flex h-14 items-center justify-between border-b px-4">
@@ -170,7 +181,7 @@ export function GroupSidebar() {
                 key={group.id}
                 group={group}
                 isActive={activeGroup?.id === group.id}
-                onClick={() => setActiveGroup(group)}
+                onClick={() => handleGroupClick(group)}
               />
             ))
           )}

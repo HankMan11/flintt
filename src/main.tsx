@@ -17,45 +17,41 @@ async function ensureStorageBuckets() {
       return; // Continue with app initialization even if bucket creation fails
     }
     
-    // Check for avatars bucket
-    const avatarsBucketExists = buckets?.some(bucket => bucket.name === 'avatars');
-    
-    if (!avatarsBucketExists) {
-      console.log("Creating avatars bucket...");
-      try {
-        const { error } = await supabase.storage.createBucket('avatars', {
-          public: true,
-          fileSizeLimit: 1024 * 1024, // 1MB
-        });
-        
-        if (error) {
-          console.error("Error creating avatars bucket:", error);
-        } else {
-          console.log("Avatars bucket created successfully");
-        }
-      } catch (bucketError) {
-        console.error("Exception creating avatars bucket:", bucketError);
+    // Create essential buckets if they don't exist
+    const bucketsToCreate = [
+      {
+        name: 'avatars',
+        public: true,
+        fileSizeLimit: 1024 * 1024 // 1MB
+      },
+      {
+        name: 'posts',
+        public: true,
+        fileSizeLimit: 10 * 1024 * 1024 // 10MB
       }
-    }
+    ];
     
-    // Check for posts bucket
-    const postsBucketExists = buckets?.some(bucket => bucket.name === 'posts');
-    
-    if (!postsBucketExists) {
-      console.log("Creating posts bucket...");
-      try {
-        const { error } = await supabase.storage.createBucket('posts', {
-          public: true,
-          fileSizeLimit: 10 * 1024 * 1024, // 10MB
-        });
-        
-        if (error) {
-          console.error("Error creating posts bucket:", error);
-        } else {
-          console.log("Posts bucket created successfully");
+    for (const bucketConfig of bucketsToCreate) {
+      const bucketExists = buckets?.some(bucket => bucket.name === bucketConfig.name);
+      
+      if (!bucketExists) {
+        console.log(`Creating ${bucketConfig.name} bucket...`);
+        try {
+          const { error } = await supabase.storage.createBucket(bucketConfig.name, {
+            public: bucketConfig.public,
+            fileSizeLimit: bucketConfig.fileSizeLimit
+          });
+          
+          if (error) {
+            console.error(`Error creating ${bucketConfig.name} bucket:`, error);
+          } else {
+            console.log(`${bucketConfig.name} bucket created successfully`);
+          }
+        } catch (bucketError) {
+          console.error(`Exception creating ${bucketConfig.name} bucket:`, bucketError);
         }
-      } catch (bucketError) {
-        console.error("Exception creating posts bucket:", bucketError);
+      } else {
+        console.log(`${bucketConfig.name} bucket already exists`);
       }
     }
   } catch (error) {

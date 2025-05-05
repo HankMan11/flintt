@@ -7,62 +7,39 @@ import './index.css';
 // Check if we have Supabase storage buckets
 import { supabase } from './integrations/supabase/client';
 
-// This function will create essential buckets if they don't exist
-async function ensureStorageBuckets() {
+// This function will check for essential buckets
+async function checkStorageBuckets() {
   try {
     const { data: buckets, error: listError } = await supabase.storage.listBuckets();
     
     if (listError) {
       console.error("Error listing buckets:", listError);
-      return; // Continue with app initialization even if bucket creation fails
+      return false;
     }
     
-    // Create essential buckets if they don't exist
-    const bucketsToCreate = [
-      {
-        name: 'avatars',
-        public: true,
-        fileSizeLimit: 1024 * 1024 // 1MB
-      },
-      {
-        name: 'posts',
-        public: true,
-        fileSizeLimit: 10 * 1024 * 1024 // 10MB
-      }
-    ];
+    // Check if essential buckets exist
+    const requiredBuckets = ['avatars', 'posts'];
+    const missingBuckets = requiredBuckets.filter(
+      bucketName => !buckets?.some(bucket => bucket.name === bucketName)
+    );
     
-    for (const bucketConfig of bucketsToCreate) {
-      const bucketExists = buckets?.some(bucket => bucket.name === bucketConfig.name);
-      
-      if (!bucketExists) {
-        console.log(`Creating ${bucketConfig.name} bucket...`);
-        try {
-          const { error } = await supabase.storage.createBucket(bucketConfig.name, {
-            public: bucketConfig.public,
-            fileSizeLimit: bucketConfig.fileSizeLimit
-          });
-          
-          if (error) {
-            console.error(`Error creating ${bucketConfig.name} bucket:`, error);
-          } else {
-            console.log(`${bucketConfig.name} bucket created successfully`);
-          }
-        } catch (bucketError) {
-          console.error(`Exception creating ${bucketConfig.name} bucket:`, bucketError);
-        }
-      } else {
-        console.log(`${bucketConfig.name} bucket already exists`);
-      }
+    if (missingBuckets.length > 0) {
+      console.warn(`Missing required buckets: ${missingBuckets.join(', ')}`);
+      console.warn("Please ensure these buckets are created in the Supabase dashboard");
+      return false;
     }
+    
+    console.log("All required storage buckets exist");
+    return true;
   } catch (error) {
     console.error("Error checking storage buckets:", error);
+    return false;
   }
 }
 
 // Call the function before rendering the app but don't wait for it
-// This prevents the app from blocking if bucket creation fails
-ensureStorageBuckets().catch(e => {
-  console.error("Failed to ensure storage buckets exist:", e);
+checkStorageBuckets().catch(e => {
+  console.error("Failed to check if storage buckets exist:", e);
 }).finally(() => {
   // Always render the app, even if bucket setup fails
   createRoot(document.getElementById("root")!).render(

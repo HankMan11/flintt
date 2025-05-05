@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Image, FilmIcon, X, Loader2, AlertCircle } from "lucide-react";
+import { Image, FilmIcon, X, Loader2, AlertCircle, RefreshCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -25,62 +25,41 @@ export function CreatePost() {
 
   // Verify bucket exists on component mount
   useEffect(() => {
-    async function checkPostsBucket() {
-      setBucketStatus("checking");
-      setErrorMessage(null);
-      
-      try {
-        // Check if the posts bucket exists
-        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-        
-        if (bucketsError) {
-          console.error("Error checking buckets:", bucketsError);
-          setErrorMessage("Could not verify storage status. Please try again later.");
-          setBucketStatus("error");
-          return;
-        }
-        
-        const postsBucketExists = buckets?.some(bucket => bucket.name === 'posts');
-        
-        if (!postsBucketExists) {
-          console.log("Posts bucket not found. Creating...");
-          
-          // Attempt to create the posts bucket
-          try {
-            const { error: createError } = await supabase.storage.createBucket('posts', {
-              public: true,
-              fileSizeLimit: 10 * 1024 * 1024 // 10MB limit
-            });
-            
-            if (createError) {
-              console.error("Failed to create posts bucket:", createError);
-              setErrorMessage("Could not create storage for posts. Please refresh or try again later.");
-              setBucketStatus("error");
-              return;
-            }
-            
-            console.log("Posts bucket created successfully");
-            setBucketStatus("ready");
-          } catch (e) {
-            console.error("Exception creating posts bucket:", e);
-            setErrorMessage("An unexpected error occurred while setting up storage.");
-            setBucketStatus("error");
-          }
-        } else {
-          console.log("Posts bucket exists");
-          setBucketStatus("ready");
-        }
-      } catch (error) {
-        console.error("Error checking posts bucket:", error);
-        setErrorMessage("Could not connect to storage service.");
-        setBucketStatus("error");
-      }
-    }
-    
-    if (currentUser && activeGroup) {
-      checkPostsBucket();
-    }
+    checkPostsBucket();
   }, [currentUser, activeGroup]);
+
+  const checkPostsBucket = async () => {
+    if (!currentUser || !activeGroup) return;
+    
+    setBucketStatus("checking");
+    setErrorMessage(null);
+    
+    try {
+      // Check if the posts bucket exists
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        console.error("Error checking buckets:", bucketsError);
+        setErrorMessage("Unable to verify storage status. You might need to log in again.");
+        setBucketStatus("error");
+        return;
+      }
+      
+      const postsBucketExists = buckets?.some(bucket => bucket.name === 'posts');
+      
+      if (!postsBucketExists) {
+        setErrorMessage("Storage not configured. Please contact support to set up the required storage buckets.");
+        setBucketStatus("error");
+        return;
+      }
+      
+      setBucketStatus("ready");
+    } catch (error) {
+      console.error("Error checking posts bucket:", error);
+      setErrorMessage("Could not connect to storage service. Please try again later.");
+      setBucketStatus("error");
+    }
+  };
 
   if (!currentUser || !activeGroup) return null;
 
@@ -131,7 +110,7 @@ export function CreatePost() {
     if (bucketStatus === "error") {
       toast({
         title: "Storage error",
-        description: errorMessage || "Storage is not ready. Please refresh and try again.",
+        description: errorMessage || "Storage is not configured. Please contact support.",
         variant: "destructive",
       });
       return;
@@ -140,7 +119,7 @@ export function CreatePost() {
     if (bucketStatus === "checking") {
       toast({
         title: "Please wait",
-        description: "Storage is being prepared. Please try again in a moment.",
+        description: "Storage status is being verified. Please try again in a moment.",
         variant: "destructive",
       });
       return;
@@ -167,21 +146,11 @@ export function CreatePost() {
     setIsUploading(true);
 
     try {
-      // Double-check that the bucket exists before uploading
-      const { data: buckets } = await supabase.storage.listBuckets();
-      const bucketExists = buckets?.some(bucket => bucket.name === 'posts');
+      // Verify bucket exists again before uploading
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
       
-      if (!bucketExists) {
-        // One more attempt to create the bucket if it doesn't exist
-        console.log("Bucket not found before upload, creating...");
-        const { error: createError } = await supabase.storage.createBucket('posts', {
-          public: true,
-          fileSizeLimit: 10 * 1024 * 1024
-        });
-        
-        if (createError) {
-          throw new Error(`Failed to create storage bucket: ${createError.message}`);
-        }
+      if (bucketsError || !buckets?.some(bucket => bucket.name === 'posts')) {
+        throw new Error("Storage bucket is unavailable. Please try again later or contact support.");
       }
 
       // Upload file to Supabase Storage
@@ -246,7 +215,16 @@ export function CreatePost() {
         {bucketStatus === "error" && (
           <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-2 text-sm">
             <AlertCircle className="h-4 w-4 text-destructive" />
-            <span className="text-destructive">{errorMessage || "Storage error. Please refresh the page."}</span>
+            <span className="text-destructive flex-1">{errorMessage || "Storage not configured properly."}</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 px-2" 
+              onClick={checkPostsBucket}
+            >
+              <RefreshCcw className="h-4 w-4 mr-1" />
+              Retry
+            </Button>
           </div>
         )}
         

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Post, Comment, User, Group } from "@/types";
@@ -34,54 +33,83 @@ export const PostsProvider: React.FC<{children: React.ReactNode}> = ({ children 
   const [userStreaks, setUserStreaks] = useState<Record<string, number>>({});
 
   const addPost = async (groupId: string, caption: string, mediaUrl: string, mediaType: "image" | "video") => {
-    if (!currentUser) return;
-    if (!groupId || !mediaUrl) return;
-
-    const newPost = {
-      user_id: currentUser.id,
-      group_id: groupId,
-      caption,
-      media_url: mediaUrl,
-      media_type: mediaType,
-      likes: [],
-      dislikes: [],
-      hearts: [],
-      is_pinned: false, // We've added this column in our SQL migration
-    };
-
-    const { data, error } = await supabase
-      .from("posts")
-      .insert(newPost)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error saving post:", error);
+    if (!currentUser) {
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to create a post",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (!groupId || !mediaUrl) {
+      toast({
+        title: "Missing information",
+        description: "Group ID and media URL are required",
+        variant: "destructive"
+      });
       return;
     }
 
-    if (activeGroup) {
-      const postObj: Post = {
-        id: data.id,
-        user: currentUser,
-        group: activeGroup,
-        caption: data.caption || undefined,
-        mediaUrl: data.media_url,
-        mediaType: data.media_type === "video" ? "video" : "image",
-        createdAt: data.created_at,
-        likes: data.likes ?? [],
-        dislikes: data.dislikes ?? [],
-        hearts: data.hearts ?? [],
-        comments: [],
-        isPinned: data.is_pinned || false,
+    try {
+      const newPost = {
+        user_id: currentUser.id,
+        group_id: groupId,
+        caption,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        likes: [],
+        dislikes: [],
+        hearts: [],
+        is_pinned: false,
       };
-      setPosts(p => [postObj, ...p]);
-      
-      // Notify group members about the new post
-      notifyGroupMembers(groupId, `${currentUser.name} posted in ${activeGroup.name}`, 'new_post', data.id);
-      
-      // Update user streak
-      updateUserStreak(currentUser.id);
+
+      const { data, error } = await supabase
+        .from("posts")
+        .insert(newPost)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error saving post:", error);
+        toast({
+          title: "Error creating post",
+          description: error.message || "Failed to save your post to the database",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (activeGroup) {
+        const postObj: Post = {
+          id: data.id,
+          user: currentUser,
+          group: activeGroup,
+          caption: data.caption || undefined,
+          mediaUrl: data.media_url,
+          mediaType: data.media_type === "video" ? "video" : "image",
+          createdAt: data.created_at,
+          likes: data.likes ?? [],
+          dislikes: data.dislikes ?? [],
+          hearts: data.hearts ?? [],
+          comments: [],
+          isPinned: data.is_pinned || false,
+        };
+        setPosts(p => [postObj, ...p]);
+        
+        // Notify group members about the new post
+        notifyGroupMembers(groupId, `${currentUser.name} posted in ${activeGroup.name}`, 'new_post', data.id);
+        
+        // Update user streak
+        updateUserStreak(currentUser.id);
+      }
+    } catch (error) {
+      console.error("Unexpected error creating post:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while creating your post",
+        variant: "destructive"
+      });
     }
   };
 
